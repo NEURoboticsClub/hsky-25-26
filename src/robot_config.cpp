@@ -1,17 +1,19 @@
 #include "robot_config.hpp"
 
+//================== HSKY 1 CONFIG ==================
+
 AutonConstants hsky1AutonConstants = {
 	3.25,
 	12.376,
 	300.0 * 57.0 / 39.0,  // encoder ticks per revolution
 
-	3,
-	0,
+	1,
+	0.0,
 	0.1,
 
-	40,
-	0,
-	5,
+	2,
+	0.05,
+	0.1,
 
 	0.5,
 	1.0,
@@ -20,82 +22,8 @@ AutonConstants hsky1AutonConstants = {
 	1.0	  // velocity units
 };
 
-DrivebaseConfig hsky1Drivebase = {
-	{-6, 9, -8, 11}, // left
-	{-16, 17, -14, 13}, // right
-	pros::E_MOTOR_BRAKE_COAST,
-	pros::E_MOTOR_GEAR_600,
-	DriveStyle::ARCADE,
-	0.75,
-	hsky1AutonConstants
-};
-
-TransportConfig hsky1Intake = {
-	{-2, 20, -18}, // left, right, roller
-	pros::E_MOTOR_BRAKE_COAST,
-	pros::E_MOTOR_GEAR_600,
-	pros::E_CONTROLLER_DIGITAL_L1, // up
-	pros::E_CONTROLLER_DIGITAL_L2, // down
-	0.75 // duty cycle
-};
-
-TransportConfig hsky1CenterStageLower = {
-	{19}, // motor ports
-	pros::E_MOTOR_BRAKE_COAST,
-	pros::E_MOTOR_GEAR_600,
-	pros::E_CONTROLLER_DIGITAL_L1, // up
-	pros::E_CONTROLLER_DIGITAL_L2, // down
-	0.75 // duty cycle
-};
-
-TransportConfig hsky1CenterStageUpper = {
-	{-1}, // motor ports
-	pros::E_MOTOR_BRAKE_COAST,
-	pros::E_MOTOR_GEAR_600,
-	pros::E_CONTROLLER_DIGITAL_L1, // up
-	pros::E_CONTROLLER_DIGITAL_L2, // down
-	0.25 // duty cycle
-};
-
-TransportConfig hsky1Hood = {
-	{-4}, // motor ports
-	pros::E_MOTOR_BRAKE_COAST,
-	pros::E_MOTOR_GEAR_600,
-	pros::E_CONTROLLER_DIGITAL_R1, // up
-	pros::E_CONTROLLER_DIGITAL_R2, // down
-	0.75 // duty cycle
-};
-
-PneumaticsConfig hsky1IntakeLeft = {
-	'a', // port
-	pros::E_CONTROLLER_DIGITAL_RIGHT, // extend
-	pros::E_CONTROLLER_DIGITAL_LEFT // retract
-};
-
-PneumaticsConfig hsky1IntakeRight = {
-	'b', // port
-	pros::E_CONTROLLER_DIGITAL_RIGHT, // extend
-	pros::E_CONTROLLER_DIGITAL_LEFT // retract
-};
-
-PneumaticsConfig hsky1Scoring = {
-	'c', // port
-	pros::E_CONTROLLER_DIGITAL_UP, // extend
-	pros::E_CONTROLLER_DIGITAL_DOWN // retract
-};
-
-RobotConfig hsky1Config = {
-	hsky1Drivebase,
-	hsky1Intake,
-	hsky1CenterStageLower,
-	hsky1CenterStageUpper,
-	hsky1Hood,
-	hsky1IntakeLeft,
-	hsky1IntakeRight,
-	hsky1Scoring
-};
-
 //================== HSKY 2 CONFIG ==================
+
 AutonConstants hsky2AutonConstants = {
 	3.25,
 	12.376,
@@ -116,16 +44,106 @@ AutonConstants hsky2AutonConstants = {
 	1.0	  // velocity units
 };
 
-DrivebaseConfig hsky2Drivebase = {
-	{-10, -1, 18},
-	{4, 5, -2},
-	pros::E_MOTOR_BRAKE_COAST,
-	pros::E_MOTOR_GEAR_600,
-	DriveStyle::ARCADE,
-	0.25,
-	hsky2AutonConstants
-};
+#define ROBOT_1
 
-RobotConfig hsky2Config = {
-	
-};
+pros::Controller ctrl(pros::E_CONTROLLER_MASTER);
+
+#ifdef ROBOT_1
+	//===================== DEVICES =====================
+	pros::MotorGroup leftMotorGroup({-12, -11, 13});
+	pros::MotorGroup rightMotorGroup({2, 1, -3});
+
+	pros::MotorGroup intakeMotorGroup({21, -18});
+
+	pros::MotorGroup scoringMotorGroup({15, -16});
+
+	pros::adi::DigitalOut mogoClampCylinder('a');
+
+	pros::Rotation xEncoder(5);
+	pros::Rotation yEncoder(-10);
+
+	pros::IMU imu1(3);
+	pros::IMU imu2(7);
+
+	//==================== SUBSYSTEMS ====================
+
+	PIDController<Pose> drivePIDMove(1.0, 0.0, 0.1);
+	PIDController<double> drivePIDAngular(2, 0.05, 0.1);
+
+	OdometryPerpendicularIMU odom(&xEncoder, &yEncoder, &imu1, &imu2);
+
+	TankDrive tankdrive(ctrl, leftMotorGroup, rightMotorGroup,
+						DriveStyle::ARCADE, pros::E_MOTOR_BRAKE_COAST,
+						pros::E_MOTOR_GEAR_600, 0.75, &odom, &drivePIDMove,
+						&drivePIDAngular);
+
+	Transport intake(ctrl, intakeMotorGroup, 1.0, pros::E_CONTROLLER_DIGITAL_L1,
+					pros::E_CONTROLLER_DIGITAL_L2, pros::E_MOTOR_BRAKE_COAST,
+					pros::E_MOTOR_GEAR_600);
+
+	Transport scoring(ctrl, scoringMotorGroup, 0.25, pros::E_CONTROLLER_DIGITAL_R1,
+					pros::E_CONTROLLER_DIGITAL_R2, pros::E_MOTOR_BRAKE_COAST,
+					pros::E_MOTOR_GEAR_600);
+
+	Pneumatics mogoClamp(ctrl, mogoClampCylinder, pros::E_CONTROLLER_DIGITAL_B,
+						pros::E_CONTROLLER_DIGITAL_X);
+
+#elifdef ROBOT_2
+	//===================== DEVICES =====================
+	pros::MotorGroup leftMotorGroup({-10, -1, 18});
+	pros::MotorGroup rightMotorGroup({4, 5, -2});
+
+	pros::MotorGroup intakeMotorGroup({-16, 6});
+
+	pros::MotorGroup scoringMotorGroup({9, -14});
+
+	pros::adi::DigitalOut mogoClampCylinder('a');
+
+	pros::Rotation xEncoder(5);
+	pros::Rotation yEncoder(-10);
+
+	pros::IMU imu1(3);
+	pros::IMU imu2(7);
+
+	//==================== SUBSYSTEMS ====================
+
+	PIDController<Pose> drivePIDMove(1.0, 0.0, 0.1);
+	PIDController<double> drivePIDAngular(2, 0.05, 0.1);
+
+	OdometryPerpendicularIMU odom(&xEncoder, &yEncoder, &imu1, &imu2);
+
+	TankDrive tankdrive(ctrl, leftMotorGroup, rightMotorGroup,
+						DriveStyle::ARCADE, pros::E_MOTOR_BRAKE_COAST,
+						pros::E_MOTOR_GEAR_600, 0.75, &odom, &drivePIDMove,
+						&drivePIDAngular);
+
+	Transport intake(ctrl, intakeMotorGroup, 1.0, pros::E_CONTROLLER_DIGITAL_L1,
+					pros::E_CONTROLLER_DIGITAL_L2, pros::E_MOTOR_BRAKE_COAST,
+					pros::E_MOTOR_GEAR_600);
+
+	Transport scoring(ctrl, scoringMotorGroup, 0.25, pros::E_CONTROLLER_DIGITAL_R1,
+					pros::E_CONTROLLER_DIGITAL_R2, pros::E_MOTOR_BRAKE_COAST,
+					pros::E_MOTOR_GEAR_600);
+
+	Pneumatics mogoClamp(ctrl, mogoClampCylinder, pros::E_CONTROLLER_DIGITAL_B,
+						pros::E_CONTROLLER_DIGITAL_X);
+
+#endif
+
+//====================== UTILS ======================
+
+void deviceInit() {
+	// IMU initialization
+	imu1.reset();
+	imu2.reset();
+	while (imu1.is_calibrating() || imu2.is_calibrating()) pros::delay(10);
+
+	// Encoder initialization
+	xEncoder.reset_position();
+	yEncoder.reset_position();
+}
+
+void robotInit() {
+	deviceInit();
+	odom.init();
+}

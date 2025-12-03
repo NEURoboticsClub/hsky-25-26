@@ -28,6 +28,7 @@ $(shell mkdir -p $(DEPDIR))
 DEPFLAGS = -MT $$@ -MMD -MP -MF $(DEPDIR)/$$*.Td
 MAKEDEPFOLDER = -$(VV)mkdir -p $(DEPDIR)/$$(dir $$(patsubst $(BINDIR)/%, %, $(ROOT)/$$@))
 RENAMEDEPENDENCYFILE = -$(VV)mv -f $(DEPDIR)/$$*.Td $$(patsubst $(SRCDIR)/%, $(DEPDIR)/%.d, $(ROOT)/$$<) && touch $$@
+RENAMEDEPENDENCYFILELIB = -$(VV)mv -f $(DEPDIR)/$$*.Td $$(patsubst $(SRCDIRLIB)/%, $(DEPDIR)/%.d, $(ROOT)/$$<) && touch $$@
 
 LIBRARIES+=$(wildcard $(FWDIR)/*.a)
 # Cannot include newlib and libc because not all of the req'd stubs are implemented
@@ -154,9 +155,11 @@ ASMOBJ=$(addprefix $(BINDIR)/,$(patsubst $(SRCDIR)/%,%.o,$(call ASMSRC,$1)))
 CSRC=$(foreach cext,$(CEXTS),$(call rwildcard, $(SRCDIR),*.$(cext), $1))
 COBJ=$(addprefix $(BINDIR)/,$(patsubst $(SRCDIR)/%,%.o,$(call CSRC, $1)))
 CXXSRC=$(foreach cxxext,$(CXXEXTS),$(call rwildcard, $(SRCDIR),*.$(cxxext), $1))
+CXXSRCLIB=$(foreach cxxext,$(CXXEXTS),$(call rwildcard, $(SRCDIRLIB),*.$(cxxext), $1))
 CXXOBJ=$(addprefix $(BINDIR)/,$(patsubst $(SRCDIR)/%,%.o,$(call CXXSRC,$1)))
+CXXOBJLIB=$(addprefix $(BINDIR)/,$(patsubst $(SRCDIRLIB)/%,%.o,$(call CXXSRCLIB,$1)))
 
-GETALLOBJ=$(sort $(call ASMOBJ,$1) $(call COBJ,$1) $(call CXXOBJ,$1))
+GETALLOBJ=$(sort $(call ASMOBJ,$1) $(call COBJ,$1) $(call CXXOBJ,$1) $(call CXXOBJLIB,$1))
 
 ARCHIVE_TEXT_LIST=$(subst $(SPACE),$(COMMA),$(notdir $(basename $(LIBRARIES))))
 
@@ -281,6 +284,16 @@ $(BINDIR)/%.$1.o: $(SRCDIR)/%.$1 $(DEPDIR)/$(basename %).d
 endef
 $(foreach cxxext,$(CXXEXTS),$(eval $(call cxx_rule,$(cxxext))))
 
+define cxx_rule_lib
+$(BINDIR)/%.$1.o: $(SRCDIRLIB)/%.$1
+$(BINDIR)/%.$1.o: $(SRCDIRLIB)/%.$1 $(DEPDIR)/$(basename %).d
+	$(VV)mkdir -p $$(dir $$@)
+	$(MAKEDEPFOLDER)
+	$$(call test_output_2,Compiled $$< ,$(CXX) -c $(INCLUDE) -iquote"$(INCDIR)/$$(dir $$*)" $(CXXFLAGS) $(EXTRA_CXXFLAGS) $(DEPFLAGS) -o $$@ $$<,$(OK_STRING))
+	$(RENAMEDEPENDENCYFILELIB)
+endef
+$(foreach cxxext,$(CXXEXTS),$(eval $(call cxx_rule_lib,$(cxxext))))
+
 define _pros_ld_timestamp
 $(VV)mkdir -p $(dir $(LDTIMEOBJ))
 @# Pipe a line of code defining _PROS_COMPILE_TOOLSTAMP and _PROS_COMPILE_DIRECTORY into GCC,
@@ -307,3 +320,4 @@ $(DEPDIR)/%.d: ;
 .PRECIOUS: $(DEPDIR)/%.d
 
 include $(wildcard $(patsubst $(SRCDIR)/%,$(DEPDIR)/%.d,$(CSRC) $(CXXSRC)))
+include $(wildcard $(patsubst $(SRCDIRLIB)/%,$(DEPDIR)/%.d,$(CSRC) $(CXXSRCLIB)))

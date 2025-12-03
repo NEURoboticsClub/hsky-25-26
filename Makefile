@@ -10,6 +10,7 @@ ROOT=.
 FWDIR:=$(ROOT)/firmware
 BINDIR=$(ROOT)/bin
 SRCDIR=$(ROOT)/src
+SRCDIRLIB=$(ROOT)/hskylib/src
 INCDIR=$(ROOT)/include
 
 WARNFLAGS+=
