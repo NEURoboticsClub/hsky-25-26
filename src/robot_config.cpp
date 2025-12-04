@@ -1,149 +1,165 @@
 #include "robot_config.hpp"
 
-//================== HSKY 1 CONFIG ==================
-
-AutonConstants hsky1AutonConstants = {
-	3.25,
-	12.376,
-	300.0 * 57.0 / 39.0,  // encoder ticks per revolution
-
-	1,
-	0.0,
-	0.1,
-
-	2,
-	0.05,
-	0.1,
-
-	0.5,
-	1.0,
-
-	1.0,  // velocity units
-	1.0	  // velocity units
-};
-
-//================== HSKY 2 CONFIG ==================
-
-AutonConstants hsky2AutonConstants = {
-	3.25,
-	12.376,
-	300.0 * 57.0 / 39.0,  // encoder ticks per revolution
-
-	1,
-	0.0,
-	0.1,
-
-	2,
-	0.05,
-	0.1,
-
-	0.5,
-	1.0,
-
-	1.0,  // velocity units
-	1.0	  // velocity units
-};
-
 #define ROBOT_1
 
 pros::Controller ctrl(pros::E_CONTROLLER_MASTER);
 
+//---------------------------------------------------
+// ##################### Robot 1 #####################
+//---------------------------------------------------
+
 #ifdef ROBOT_1
-	//===================== DEVICES =====================
-	pros::MotorGroup leftMotorGroup({-12, -11, 13});
-	pros::MotorGroup rightMotorGroup({2, 1, -3});
 
-	pros::MotorGroup intakeMotorGroup({21, -18});
+//===================== CONFIG =====================
 
-	pros::MotorGroup scoringMotorGroup({15, -16});
+PIDController<Pose>::pid_config_t drivePIDConfig{.kP = 0.0,
+                                                 .kI = 0.0,
+                                                 .kD = 0.0,
 
-	pros::adi::DigitalOut mogoClampCylinder('a');
+                                                 .deadband = 0.0};
+PIDController<double>::pid_config_t turnPIDConfig{.kP = 0.0,
+                                                  .kI = 0.0,
+                                                  .kD = 0.0,
 
-	pros::Rotation xEncoder(5);
-	pros::Rotation yEncoder(-10);
+                                                  .deadband = 0.0};
 
-	pros::IMU imu1(3);
-	pros::IMU imu2(7);
+PIDController<Pose> drivePID(drivePIDConfig);
+PIDController<double> turnPID(turnPIDConfig);
 
-	//==================== SUBSYSTEMS ====================
+robot_specs_t robotConfig{.driveWheelDiam = 0.0,
+                          .trackWidth = 0.0,
+                          .odomWheelDiam = 0.0,
 
-	PIDController<Pose> drivePIDMove(1.0, 0.0, 0.1);
-	PIDController<double> drivePIDAngular(2, 0.05, 0.1);
+                          .maxDrivePct = 0,
+                          .maxTurnPct = 0,
 
-	OdometryPerpendicularIMU odom(&xEncoder, &yEncoder, &imu1, &imu2);
+                          .drivePID = &drivePID,
+                          .turnPID = &turnPID};
 
-	TankDrive tankdrive(ctrl, leftMotorGroup, rightMotorGroup,
-						DriveStyle::ARCADE, pros::E_MOTOR_BRAKE_COAST,
-						pros::E_MOTOR_GEAR_600, 0.75, &odom, &drivePIDMove,
-						&drivePIDAngular);
+//===================== DEVICES =====================
 
-	Transport intake(ctrl, intakeMotorGroup, 1.0, pros::E_CONTROLLER_DIGITAL_L1,
-					pros::E_CONTROLLER_DIGITAL_L2, pros::E_MOTOR_BRAKE_COAST,
-					pros::E_MOTOR_GEAR_600);
+pros::MotorGroup leftMotorGroup({-12, -11, 13});
+pros::MotorGroup rightMotorGroup({2, 1, -3});
 
-	Transport scoring(ctrl, scoringMotorGroup, 0.25, pros::E_CONTROLLER_DIGITAL_R1,
-					pros::E_CONTROLLER_DIGITAL_R2, pros::E_MOTOR_BRAKE_COAST,
-					pros::E_MOTOR_GEAR_600);
+pros::MotorGroup intakeMotorGroup({21, -18});
 
-	Pneumatics mogoClamp(ctrl, mogoClampCylinder, pros::E_CONTROLLER_DIGITAL_B,
-						pros::E_CONTROLLER_DIGITAL_X);
+pros::MotorGroup scoringMotorGroup({15, -16});
+
+pros::adi::DigitalOut mogoClampCylinder('a');
+
+pros::Rotation xEncoder(5);
+pros::Rotation yEncoder(-10);
+
+pros::IMU imu1(3);
+pros::IMU imu2(7);
+
+//==================== SUBSYSTEMS ====================
+
+OdometryPerpendicularIMU odom(&xEncoder, &yEncoder, &imu1, &imu2);
+
+TankDrive tankdrive(ctrl, leftMotorGroup, rightMotorGroup, DriveStyle::ARCADE,
+                    pros::E_MOTOR_BRAKE_COAST, pros::E_MOTOR_GEAR_600, 0.75,
+                    robotConfig, &odom);
+
+Transport intake(ctrl, intakeMotorGroup, 1.0, pros::E_CONTROLLER_DIGITAL_L1,
+                 pros::E_CONTROLLER_DIGITAL_L2, pros::E_MOTOR_BRAKE_COAST,
+                 pros::E_MOTOR_GEAR_600);
+
+Transport scoring(ctrl, scoringMotorGroup, 0.25, pros::E_CONTROLLER_DIGITAL_R1,
+                  pros::E_CONTROLLER_DIGITAL_R2, pros::E_MOTOR_BRAKE_COAST,
+                  pros::E_MOTOR_GEAR_600);
+
+Pneumatics mogoClamp(ctrl, mogoClampCylinder, pros::E_CONTROLLER_DIGITAL_B,
+                     pros::E_CONTROLLER_DIGITAL_X);
+
+//---------------------------------------------------
+// ##################### Robot 2 #####################
+//---------------------------------------------------
 
 #elifdef ROBOT_2
-	//===================== DEVICES =====================
-	pros::MotorGroup leftMotorGroup({-10, -1, 18});
-	pros::MotorGroup rightMotorGroup({4, 5, -2});
 
-	pros::MotorGroup intakeMotorGroup({-16, 6});
+//===================== CONFIG =====================
 
-	pros::MotorGroup scoringMotorGroup({9, -14});
+PIDController<Pose>::pid_config_t drivePIDConfig{.kP = 0.0,
+                                                 .kI = 0.0,
+                                                 .kD = 0.0,
 
-	pros::adi::DigitalOut mogoClampCylinder('a');
+                                                 .deadband = 0.0};
+PIDController<double>::pid_config_t turnPIDConfig{.kP = 0.0,
+                                                  .kI = 0.0,
+                                                  .kD = 0.0,
 
-	pros::Rotation xEncoder(5);
-	pros::Rotation yEncoder(-10);
+                                                  .deadband = 0.0};
 
-	pros::IMU imu1(3);
-	pros::IMU imu2(7);
+PIDController<Pose> drivePID(drivePIDConfig);
+PIDController<double> turnPID(turnPIDConfig);
 
-	//==================== SUBSYSTEMS ====================
+robot_specs_t robotConfig{.driveWheelDiam = 0.0,
+                          .trackWidth = 0.0,
+                          .odomWheelDiam = 0.0,
 
-	PIDController<Pose> drivePIDMove(1.0, 0.0, 0.1);
-	PIDController<double> drivePIDAngular(2, 0.05, 0.1);
+                          .maxDrivePct = 0,
+                          .maxTurnPct = 0,
 
-	OdometryPerpendicularIMU odom(&xEncoder, &yEncoder, &imu1, &imu2);
+                          .drivePID = &drivePID,
+                          .turnPID = &turnPID};
 
-	TankDrive tankdrive(ctrl, leftMotorGroup, rightMotorGroup,
-						DriveStyle::ARCADE, pros::E_MOTOR_BRAKE_COAST,
-						pros::E_MOTOR_GEAR_600, 0.75, &odom, &drivePIDMove,
-						&drivePIDAngular);
+//===================== DEVICES =====================
 
-	Transport intake(ctrl, intakeMotorGroup, 1.0, pros::E_CONTROLLER_DIGITAL_L1,
-					pros::E_CONTROLLER_DIGITAL_L2, pros::E_MOTOR_BRAKE_COAST,
-					pros::E_MOTOR_GEAR_600);
+pros::MotorGroup leftMotorGroup({-10, -1, 18});
+pros::MotorGroup rightMotorGroup({4, 5, -2});
 
-	Transport scoring(ctrl, scoringMotorGroup, 0.25, pros::E_CONTROLLER_DIGITAL_R1,
-					pros::E_CONTROLLER_DIGITAL_R2, pros::E_MOTOR_BRAKE_COAST,
-					pros::E_MOTOR_GEAR_600);
+pros::MotorGroup intakeMotorGroup({-16, 6});
 
-	Pneumatics mogoClamp(ctrl, mogoClampCylinder, pros::E_CONTROLLER_DIGITAL_B,
-						pros::E_CONTROLLER_DIGITAL_X);
+pros::MotorGroup scoringMotorGroup({9, -14});
+
+pros::adi::DigitalOut mogoClampCylinder('a');
+
+pros::Rotation xEncoder(5);
+pros::Rotation yEncoder(-10);
+
+pros::IMU imu1(3);
+pros::IMU imu2(7);
+
+//==================== SUBSYSTEMS ====================
+
+PIDController<Pose> drivePIDMove(1.0, 0.0, 0.1);
+PIDController<double> drivePIDAngular(2, 0.05, 0.1);
+
+OdometryPerpendicularIMU odom(&xEncoder, &yEncoder, &imu1, &imu2);
+
+TankDrive tankdrive(ctrl, leftMotorGroup, rightMotorGroup, DriveStyle::ARCADE,
+                    pros::E_MOTOR_BRAKE_COAST, pros::E_MOTOR_GEAR_600, 0.75,
+                    &odom, &drivePIDMove, &drivePIDAngular);
+
+Transport intake(ctrl, intakeMotorGroup, 1.0, pros::E_CONTROLLER_DIGITAL_L1,
+                 pros::E_CONTROLLER_DIGITAL_L2, pros::E_MOTOR_BRAKE_COAST,
+                 pros::E_MOTOR_GEAR_600);
+
+Transport scoring(ctrl, scoringMotorGroup, 0.25, pros::E_CONTROLLER_DIGITAL_R1,
+                  pros::E_CONTROLLER_DIGITAL_R2, pros::E_MOTOR_BRAKE_COAST,
+                  pros::E_MOTOR_GEAR_600);
+
+Pneumatics mogoClamp(ctrl, mogoClampCylinder, pros::E_CONTROLLER_DIGITAL_B,
+                     pros::E_CONTROLLER_DIGITAL_X);
 
 #endif
 
 //====================== UTILS ======================
 
 void deviceInit() {
-	// IMU initialization
-	imu1.reset();
-	imu2.reset();
-	while (imu1.is_calibrating() || imu2.is_calibrating()) pros::delay(10);
+  // IMU initialization
+  imu1.reset();
+  imu2.reset();
+  while (imu1.is_calibrating() || imu2.is_calibrating())
+    pros::delay(10);
 
-	// Encoder initialization
-	xEncoder.reset_position();
-	yEncoder.reset_position();
+  // Encoder initialization
+  xEncoder.reset_position();
+  yEncoder.reset_position();
 }
 
 void robotInit() {
-	deviceInit();
-	odom.init();
+  deviceInit();
+  odom.init();
 }
