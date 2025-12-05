@@ -12,7 +12,7 @@ pros::Controller ctrl(pros::E_CONTROLLER_MASTER);
 
 //===================== CONFIG =====================
 
-PIDController<Pose>::pid_config_t drivePIDConfig{.kP = 0.0,
+PIDController<pose_t>::pid_config_t drivePIDConfig{.kP = 0.0,
                                                  .kI = 0.0,
                                                  .kD = 0.0,
 
@@ -23,7 +23,7 @@ PIDController<double>::pid_config_t turnPIDConfig{.kP = 0.0,
 
                                                   .deadband = 0.0};
 
-PIDController<Pose> drivePID(drivePIDConfig);
+PIDController<pose_t> drivePID(drivePIDConfig);
 PIDController<double> turnPID(turnPIDConfig);
 
 robot_specs_t robotConfig{.driveWheelDiam = 0.0,

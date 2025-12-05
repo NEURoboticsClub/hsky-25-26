@@ -1,6 +1,5 @@
 #include "main.h"
 
-#include "robot_config.hpp"
 /**
  * A callback function for LLEMU's center button.
  *
