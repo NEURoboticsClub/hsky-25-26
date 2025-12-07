@@ -42,7 +42,7 @@ pros::MotorGroup intakeMotorGroup({5});
 
 //==================== SUBSYSTEMS ====================
 
-Transport intake(intakeMotorGroup, 1.0, pros::E_MOTOR_BRAKE_COAST,
+Transport intake(intakeMotorGroup, 0.05, pros::E_MOTOR_BRAKE_COAST,
 				 pros::E_MOTOR_GEAR_600);
 
 //---------------------------------------------------
@@ -124,8 +124,12 @@ void deviceInit() {}
 
 void opcontrolInit() {
 
-	controller.ButtonB.onPressed([] {
+	controller.ButtonB.onHold([] (){
 		intake.moveOut();
+	});
+
+	controller.ButtonLeft.onPressed([]() {
+		pros::lcd::set_text(1, "Left Button");
 	});
 }
 

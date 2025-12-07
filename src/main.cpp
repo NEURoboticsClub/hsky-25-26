@@ -1,5 +1,7 @@
 #include "main.h"
 
+#include "robot_config.hpp"
+
 /**
  * A callback function for LLEMU's center button.
  *
@@ -74,11 +76,15 @@ void autonomous() {}
  * task, not resume it from where it left off.
  */
 void opcontrol() {
+	opcontrolInit();
 
 	controller.initialize();
 
 	while (true) {
-		
+		if (!controller.ButtonB.isPressed()) {
+			intake.stop();
+		}
+
 		pros::delay(20);
 	}
 }

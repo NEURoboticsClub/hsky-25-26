@@ -12,6 +12,7 @@ extern Transport intake;
 extern Transport scoring;
 extern Pneumatics mogoClamp;
 
+void opcontrolInit();
 void robotInit();
 
 #endif
