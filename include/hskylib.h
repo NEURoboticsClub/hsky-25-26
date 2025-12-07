@@ -17,6 +17,7 @@
 #include "hskylib/utils/commands/command_runner.h"
 #include "hskylib/utils/commands/drive_commands.h"
 #include "hskylib/utils/controls/pid_controller.h"
+#include "hskylib/utils/hsky_controller.h"
 #include "hskylib/utils/toggle.h"
 #include "hskylib/utils/utils.h"
 

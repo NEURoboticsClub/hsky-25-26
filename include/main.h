@@ -36,6 +36,8 @@
 
 #include "api.h"
 
+#include "robot_config.hpp"
+
 /**
  * You should add more #includes here
  */

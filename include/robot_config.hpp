@@ -6,7 +6,7 @@
 #include "api.h"
 #include "hskylib.h"
 
-extern pros::Controller ctrl;
+extern HskyController controller;
 extern TankDrive tankdrive;
 extern Transport intake;
 extern Transport scoring;
