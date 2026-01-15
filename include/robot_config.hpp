@@ -6,12 +6,9 @@
 #include "api.h"
 #include "hskylib.h"
 
-extern pros::Controller ctrl;
-extern TankDrive tankdrive;
-extern Transport intake;
-extern Transport scoring;
-extern Pneumatics mogoClamp;
+extern HskyController controller;
 
+void opcontrolInit();
 void robotInit();
 
 #endif
