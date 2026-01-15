@@ -7,12 +7,6 @@
 #include "hskylib.h"
 
 extern HskyController controller;
-extern TankDrive driveBase;
-extern Transport intake;
-extern Transport lowerScoring;
-extern Transport upperScoring;
-extern Pneumatics scraper;
-extern Pneumatics hood;
 
 void opcontrolInit();
 void robotInit();
