@@ -8,9 +8,7 @@
  * All other competition modes are blocked by initialize; it is recommended
  * to keep execution time for this mode under a few seconds.
  */
-void initialize() {
-	robotInit();
-}
+void initialize() { robotInit(); }
 
 /**
  * Runs while the robot is in the disabled state of Field Management System or
@@ -59,7 +57,12 @@ void autonomous() {}
 void opcontrol() {
 	opcontrolInit();
 
+	controller.initialize();
+
 	while (true) {
+		driveBase.arcadeDrive(controller.AxisLeftY.position(),
+							  controller.AxisRightX.position());
+
 		pros::delay(20);
 	}
 }
