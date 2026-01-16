@@ -107,6 +107,33 @@ Pneumatics hood(hoodCylinder);
 
 //====================== UTILS ======================
 
+void scoreLong() {
+	hood.extendPiston();
+	upperScoring.moveIn();
+	lowerScoring.moveIn();
+	intake.moveIn();
+}
+
+void scoreUpper() {
+	upperScoring.moveOut();
+	lowerScoring.moveIn();
+	intake.moveIn();
+}
+
+void scoreLower() {
+	upperScoring.moveOut();
+	lowerScoring.moveOut();
+	intake.moveOut(60);
+}
+
+void matchLoad() {
+	hood.retractPiston();
+	scraper.extendPiston();
+	upperScoring.moveIn();
+	lowerScoring.moveIn();
+	intake.moveIn();
+}
+
 void deviceInit() {}
 
 void opcontrolInit() {}
