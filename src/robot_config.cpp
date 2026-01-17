@@ -7,7 +7,7 @@
 #include "pros/adi.hpp"
 #include "pros/motors.h"
 
-#define ROBOT_1
+#define ROBOT_2
 
 HskyController controller(pros::E_CONTROLLER_MASTER);
 
@@ -32,8 +32,8 @@ robot_specs_t robotConfig{.driveWheelDiam = 0.0,
 pros::MotorGroup leftDriveMotors({-12, 13, -14, 15});
 pros::MotorGroup rightDriveMotors({17, -18, 19, -20});
 
-pros::MotorGroup intakeMotors({9});
-pros::MotorGroup lowerScoringMotors({-8});
+pros::MotorGroup intakeMotors({6});
+pros::MotorGroup lowerScoringMotors({-9});
 pros::MotorGroup upperScoringMotors({4});
 
 pros::adi::DigitalOut scraperCylinder('c');
@@ -86,8 +86,9 @@ pros::MotorGroup intakeMotors({9});
 pros::MotorGroup lowerScoringMotors({-10});
 pros::MotorGroup upperScoringMotors({1});
 
-pros::adi::DigitalOut scraperCylinder('b');
-pros::adi::DigitalOut hoodCylinder('a');
+pros::adi::DigitalOut scraperCylinder('h');
+pros::adi::DigitalOut hoodCylinder('g');
+pros::adi::DigitalOut wingCylinder('a');
 
 //==================== SUBSYSTEMS ====================
 
@@ -104,6 +105,7 @@ Transport upperScoring(upperScoringMotors, 0.75, pros::E_MOTOR_BRAKE_COAST,
 
 Pneumatics scraper(scraperCylinder);
 Pneumatics hood(hoodCylinder);
+Pneumatics wing(wingCylinder);
 
 #endif
 
@@ -117,7 +119,7 @@ void scoreLong() {
 }
 
 void scoreUpper() {
-	upperScoring.moveOut();
+	upperScoring.moveOut(60);
 	lowerScoring.moveIn();
 	intake.moveIn();
 }
@@ -136,8 +138,53 @@ void matchLoad() {
 	intake.moveIn();
 }
 
+void intakeField() {
+	hood.retractPiston();
+	upperScoring.moveIn();
+	lowerScoring.moveIn();
+	intake.moveIn();
+}
+
+void intakeLoader() {
+	hood.retractPiston();
+	scraper.extendPiston();
+	upperScoring.moveIn();
+	lowerScoring.moveIn();
+	intake.moveIn();
+}
+
+void stopAll() {
+	upperScoring.stop();
+	lowerScoring.stop();
+	intake.stop();
+}
+
 void deviceInit() {}
 
-void opcontrolInit() {}
+void opcontrolInit() {
+	controller.ButtonR1.onPressed([]() { scoreUpper(); });
+	controller.ButtonR1.onReleased([]() { stopAll(); });
+
+	controller.ButtonR2.onPressed([]() { scoreLong(); });
+	controller.ButtonR2.onReleased([]() { stopAll(); });
+
+	controller.ButtonL1.onPressed([]() { intakeField(); });
+	controller.ButtonL1.onReleased([]() { stopAll(); });
+
+	controller.ButtonL2.onPressed([]() { intakeLoader(); });
+	controller.ButtonL2.onReleased([]() {
+		stopAll();
+		scraper.retractPiston();
+	});
+
+	controller.ButtonY.onPressed([]() { wing.extendPiston(); });
+	controller.ButtonY.onReleased([]() { wing.retractPiston(); });
+
+	controller.ButtonA.onPressed([]() { scoreLower(); });
+	controller.ButtonA.onReleased([]() { stopAll(); });
+
+	controller.ButtonB.onPressed([]() { hood.extendPiston(); });
+	controller.ButtonB.onReleased([]() { hood.retractPiston(); });
+}
 
 void robotInit() { deviceInit(); }
