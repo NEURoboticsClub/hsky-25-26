@@ -29,15 +29,16 @@ robot_specs_t robotConfig{.driveWheelDiam = 0.0,
 
 //===================== DEVICES =====================
 
-pros::MotorGroup leftDriveMotors({12, -13, 14, -15});
-pros::MotorGroup rightDriveMotors({-16, 3, -4, 1});
+pros::MotorGroup leftDriveMotors({-12, 13, -14, 15});
+pros::MotorGroup rightDriveMotors({17, -18, 19, -20});
 
 pros::MotorGroup intakeMotors({9});
-pros::MotorGroup lowerScoringMotors({-10});
-pros::MotorGroup upperScoringMotors({2});
+pros::MotorGroup lowerScoringMotors({-8});
+pros::MotorGroup upperScoringMotors({4});
 
-pros::adi::DigitalOut scraperCylinder('a');
-pros::adi::DigitalOut hoodCylinder('b');
+pros::adi::DigitalOut scraperCylinder('c');
+pros::adi::DigitalOut hoodCylinder('a');
+pros::adi::DigitalOut wingCylinder('b');
 
 //==================== SUBSYSTEMS ====================
 TankDrive driveBase(leftDriveMotors, rightDriveMotors, DriveStyle::ARCADE,
@@ -58,6 +59,7 @@ Transport upperScoring(upperScoringMotors, 0.75, pros::E_MOTOR_BRAKE_COAST,
 
 Pneumatics scraper(scraperCylinder);
 Pneumatics hood(hoodCylinder);
+Pneumatics wing(wingCylinder);
 
 //---------------------------------------------------
 // ##################### Robot 2 #####################

@@ -60,6 +60,7 @@ void opcontrol() {
 	controller.initialize();
 
 	while (true) {
+		driveBase.arcadeDrive(controller.AxisLeftY.position(), controller.AxisRightX.position());
 
 		pros::delay(20);
 	}
