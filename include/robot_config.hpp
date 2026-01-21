@@ -5,6 +5,7 @@
 
 #include "api.h"
 #include "hskylib.h"
+#include "hskylib/subsystems/odometry/odometry.h"
 
 extern HskyController controller;
 extern TankDrive driveBase;

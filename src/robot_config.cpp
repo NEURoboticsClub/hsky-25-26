@@ -7,7 +7,7 @@
 #include "pros/adi.hpp"
 #include "pros/motors.h"
 
-#define ROBOT_1
+#define ROBOT_2
 
 HskyController controller(pros::E_CONTROLLER_MASTER);
 
@@ -17,47 +17,47 @@ HskyController controller(pros::E_CONTROLLER_MASTER);
 
 #ifdef ROBOT_1
 
-//===================== CONFIG =====================
+// //===================== CONFIG =====================
 
-robot_specs_t robotConfig{.driveWheelDiam = 0.0,
-						  .trackWidth = 0.0,
-						  .odomWheelDiam = 0.0,
-						  .maxDrivePct = 0,
-						  .maxTurnPct = 0,
-						  .drivePID = nullptr,
-						  .turnPID = nullptr};
+// robot_specs_t robotConfig{.driveWheelDiam = 0.0,
+// 						  .trackWidth = 0.0,
+// 						  .odomWheelDiam = 0.0,
+// 						  .maxDrivePct = 0,
+// 						  .maxTurnPct = 0,
+// 						  .drivePID = nullptr,
+// 						  .turnPID = nullptr};
 
-//===================== DEVICES =====================
+// //===================== DEVICES =====================
 
-pros::MotorGroup leftDriveMotors({12, -13, 14, -15});
-pros::MotorGroup rightDriveMotors({-16, 3, -4, 1});
+// pros::MotorGroup leftDriveMotors({12, -13, 14, -15});
+// pros::MotorGroup rightDriveMotors({-16, 3, -4, 1});
 
-pros::MotorGroup intakeMotors({9});
-pros::MotorGroup lowerScoringMotors({-10});
-pros::MotorGroup upperScoringMotors({2});
+// pros::MotorGroup intakeMotors({9});
+// pros::MotorGroup lowerScoringMotors({-10});
+// pros::MotorGroup upperScoringMotors({2});
 
-pros::adi::DigitalOut scraperCylinder('a');
-pros::adi::DigitalOut hoodCylinder('b');
+// pros::adi::DigitalOut scraperCylinder('a');
+// pros::adi::DigitalOut hoodCylinder('b');
 
-//==================== SUBSYSTEMS ====================
-TankDrive driveBase(leftDriveMotors, rightDriveMotors, DriveStyle::ARCADE,
+// //==================== SUBSYSTEMS ====================
+// TankDrive driveBase(leftDriveMotors, rightDriveMotors, DriveStyle::ARCADE,
 
-					pros::E_MOTOR_BRAKE_COAST, pros::E_MOTOR_GEAR_600, 1.0,
+// 					pros::E_MOTOR_BRAKE_COAST, pros::E_MOTOR_GEAR_600, 1.0,
 
-					robotConfig);
+// 					robotConfig);
 
-Transport intake(intakeMotors, 0.75, pros::E_MOTOR_BRAKE_COAST,
+// Transport intake(intakeMotors, 0.75, pros::E_MOTOR_BRAKE_COAST,
 
-				 pros::E_MOTOR_GEAR_600);
-Transport lowerScoring(lowerScoringMotors, 0.75, pros::E_MOTOR_BRAKE_COAST,
+// 				 pros::E_MOTOR_GEAR_600);
+// Transport lowerScoring(lowerScoringMotors, 0.75, pros::E_MOTOR_BRAKE_COAST,
 
-					   pros::E_MOTOR_GEAR_600);
-Transport upperScoring(upperScoringMotors, 0.75, pros::E_MOTOR_BRAKE_COAST,
+// 					   pros::E_MOTOR_GEAR_600);
+// Transport upperScoring(upperScoringMotors, 0.75, pros::E_MOTOR_BRAKE_COAST,
 
-					   pros::E_MOTOR_GEAR_600);
+// 					   pros::E_MOTOR_GEAR_600);
 
-Pneumatics scraper(scraperCylinder);
-Pneumatics hood(hoodCylinder);
+// Pneumatics scraper(scraperCylinder);
+// Pneumatics hood(hoodCylinder);
 
 //---------------------------------------------------
 // ##################### Robot 2 #####################
@@ -67,13 +67,17 @@ Pneumatics hood(hoodCylinder);
 
 //===================== CONFIG =====================
 
+PIDController drivePid(0.0, 0.0, 0.0, PIDController::ERROR_TYPE::LINEAR);
+PIDController turnPid(0.0, 0.0, 0.0, PIDController::ERROR_TYPE::ANGULAR);
+
+
 robot_specs_t robotConfig{.driveWheelDiam = 0.0,
-						  .trackWidth = 0.0,
+						  .trackWidth = 11.0,
 						  .odomWheelDiam = 0.0,
 						  .maxDrivePct = 0,
 						  .maxTurnPct = 0,
-						  .drivePID = nullptr,
-						  .turnPID = nullptr};
+						  .drivePID = &drivePid,
+						  .turnPID = &turnPid};
 
 //===================== DEVICES =====================
 
@@ -87,14 +91,14 @@ pros::MotorGroup upperScoringMotors({1});
 pros::adi::DigitalOut scraperCylinder('b');
 pros::adi::DigitalOut hoodCylinder('a');
 
+DrivebaseOdometry odom(&leftDriveMotors, &rightDriveMotors,
+						pros::E_MOTOR_GEAR_600, robotConfig.trackWidth);
+
 //==================== SUBSYSTEMS ====================
 
 TankDrive driveBase(leftDriveMotors, rightDriveMotors, DriveStyle::ARCADE,
 					pros::E_MOTOR_BRAKE_COAST, pros::E_MOTOR_GEAR_600, 1.0,
-					robotConfig);
-
-Transport intake(intakeMotors, 0.75, pros::E_MOTOR_BRAKE_COAST,
-				 pros::E_MOTOR_GEAR_600);
+				robotConfig, &odom);
 Transport lowerScoring(lowerScoringMotors, 0.75, pros::E_MOTOR_BRAKE_COAST,
 					   pros::E_MOTOR_GEAR_600);
 Transport upperScoring(upperScoringMotors, 0.75, pros::E_MOTOR_BRAKE_COAST,
@@ -107,7 +111,11 @@ Pneumatics hood(hoodCylinder);
 
 //====================== UTILS ======================
 
-void deviceInit() {}
+void deviceInit() {	
+	odom.reset();
+	odom.init();
+
+}
 
 void opcontrolInit() {}
 
