@@ -67,7 +67,7 @@ HskyController controller(pros::E_CONTROLLER_MASTER);
 
 //===================== CONFIG =====================
 
-PIDController drivePid(0.0, 0.0, 0.0, PIDController::ERROR_TYPE::LINEAR);
+PIDController drivePid(1.0, 0.0, 0.0, PIDController::ERROR_TYPE::LINEAR);
 PIDController turnPid(0.0, 0.0, 0.0, PIDController::ERROR_TYPE::ANGULAR);
 
 

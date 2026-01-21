@@ -1,6 +1,8 @@
 #include "main.h"
 
 #include "robot_config.hpp"
+#include <hskylib/utils/commands/command_runner.h>
+#include <queue>
 
 /**
  * Runs initialization code. This occurs as soon as the program is started.
@@ -59,8 +61,23 @@ void opcontrol() {
 
 	controller.initialize();
 
+
+	std::queue<Command*> commandQueue;
+
+	commandQueue.push(new DriveDistance(driveBase, odom, 24.0));
+	// commandQueue.push(new TurnToHeading(tankdrive, odom, 90.0));
+	// commandQueue.push(new DriveDistance(tankdrive, odom, 24.0));
+	// commandQueue.push(new TurnToHeading(tankdrive, odom, 180.0));
+	// commandQueue.push(new DriveDistance(tankdrive, odom, 24.0));
+	// commandQueue.push(new TurnToHeading(tankdrive, odom, 270.0));
+	// commandQueue.push(new DriveDistance(tankdrive, odom, 24.0));
+	// commandQueue.push(new TurnToHeading(tankdrive, odom, 0.0));
+
+	CommandRunner commandRunner(commandQueue);
+	commandRunner.run();
+
 	while (true) {
-		driveBase.arcadeDrive(controller.AxisLeftY.position(), controller.AxisRightX.position());
+		// driveBase.arcadeDrive(controller.AxisLeftY.position(), controller.AxisRightX.position());
 
 		pros::delay(20);
 	}
