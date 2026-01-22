@@ -67,8 +67,8 @@ HskyController controller(pros::E_CONTROLLER_MASTER);
 
 //===================== CONFIG =====================
 
-PIDController drivePid(1.0, 0.0, 0.0, PIDController::ERROR_TYPE::LINEAR);
-PIDController turnPid(0.0, 0.0, 0.0, PIDController::ERROR_TYPE::ANGULAR);
+PIDController drivePid(6.0, 0.0, 10.0, PIDController::ERROR_TYPE::LINEAR);
+PIDController turnPid(40.0, 0.0, 5.0, PIDController::ERROR_TYPE::ANGULAR);
 
 
 robot_specs_t robotConfig{.driveWheelDiam = 0.0,
