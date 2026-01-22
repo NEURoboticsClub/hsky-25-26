@@ -84,6 +84,8 @@ robot_specs_t robotConfig{.driveWheelDiam = 0.0,
 pros::MotorGroup leftDriveMotors({11, -12, 13, -14});
 pros::MotorGroup rightDriveMotors({17, -18, 19, -20});
 
+pros::IMU imu(16);
+
 pros::MotorGroup intakeMotors({9});
 pros::MotorGroup lowerScoringMotors({-10});
 pros::MotorGroup upperScoringMotors({1});
@@ -91,8 +93,8 @@ pros::MotorGroup upperScoringMotors({1});
 pros::adi::DigitalOut scraperCylinder('b');
 pros::adi::DigitalOut hoodCylinder('a');
 
-DrivebaseOdometry odom(&leftDriveMotors, &rightDriveMotors,
-						pros::E_MOTOR_GEAR_600, robotConfig.trackWidth);
+DrivebaseIMUOdometry odom(&leftDriveMotors, &rightDriveMotors,
+						&imu, pros::E_MOTOR_GEAR_600, robotConfig.trackWidth);
 
 //==================== SUBSYSTEMS ====================
 
@@ -114,6 +116,11 @@ Pneumatics hood(hoodCylinder);
 void deviceInit() {	
 	odom.reset();
 	odom.init();
+
+	imu.reset();
+	while (imu.is_calibrating() || !std::isfinite(imu.get_heading())) {
+		pros::delay(20);
+	}
 
 }
 

@@ -3,6 +3,7 @@
 
 // Subsystems
 #include "hskylib/subsystems/odometry/odometry_drivebase.h"
+#include "hskylib/subsystems/odometry/odometry_drivebase_imu.h"
 #include "hskylib/subsystems/odometry/odometry_perpendicular_imu.h"
 #include "hskylib/subsystems/odometry/odometry_three_wheel.h"
 #include "hskylib/subsystems/odometry/odometry_two_wheel_imu.h"
