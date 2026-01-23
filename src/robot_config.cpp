@@ -10,7 +10,7 @@
 #define ROBOT_2
 
 HskyController controller(pros::E_CONTROLLER_MASTER);
-
+std::queue<Command*> commandQueue;
 //---------------------------------------------------
 // ##################### Robot 1 #####################
 //---------------------------------------------------
@@ -110,6 +110,9 @@ Transport lowerScoring(lowerScoringMotors, 0.75, pros::E_MOTOR_BRAKE_COAST,
 Transport upperScoring(upperScoringMotors, 0.75, pros::E_MOTOR_BRAKE_COAST,
 					   pros::E_MOTOR_GEAR_600);
 
+Transport intake(intakeMotors, 0.75, pros::E_MOTOR_BRAKE_COAST,
+				 pros::E_MOTOR_GEAR_600);
+
 Pneumatics scraper(scraperCylinder);
 Pneumatics hood(hoodCylinder);
 Pneumatics wing(wingCylinder);
@@ -176,8 +179,6 @@ void stopAll() {
 	intake.stop();
 }
 
-void deviceInit() {}
-
 void opcontrolInit() {
 	controller.ButtonR1.onHold([]() { scoreUpper(); });
 	controller.ButtonR1.onReleased([]() { stopAll(); });
@@ -204,4 +205,89 @@ void opcontrolInit() {
 	controller.ButtonB.onReleased([]() { hood.retractPiston(); });
 }
 
-void robotInit() { deviceInit(); }
+void robotInit() { 
+	deviceInit(); 
+	// commandQueue.push(new DriveDistance(driveBase, odom, -24.0, 100000));
+	// commandQueue.push(new TurnToHeading(driveBase, odom, 90.0, 100000));
+	// commandQueue.push(new TimeoutCommand(500));
+	// commandQueue.push(new TurnToHeading(driveBase, odom, 180.0, 100000));
+	// commandQueue.push(new TimeoutCommand(500));
+	// commandQueue.push(new TurnToHeading(driveBase, odom, 270.0, 100000));
+	// commandQueue.push(new TimeoutCommand(500));
+	// commandQueue.push(new TurnToHeading(driveBase, odom, 0.0, 100000));
+
+	
+	
+	// commandQueue.push(new DriveDistance(driveBase, odom, 40.0, 100000));
+	// commandQueue.push(new TurnToHeading(driveBase, odom, 90.0));
+	// commandQueue.push(new InstantCommand([&]() {
+	// 	intakeLoader();
+	// }));
+
+	// // commandQueue.push(new InstantCommand([&]() {
+		
+	// // }));
+	// commandQueue.push(new DriveDistance(driveBase, odom, 14, 1000));
+	// commandQueue.push(new TimeoutCommand(3000));
+	// commandQueue.push(new InstantCommand([&]() {
+	// 	stopAll();
+	// 	scraper.retractPiston();
+	// }));
+	// commandQueue.push(new DriveDistance(driveBase, odom, -25, 1500));
+	commandQueue.push(new InstantCommand([&]() {
+		// hood.retractPiston();
+		hoodCylinder.set_value(0);
+		// scoreLong();
+	}));
+	commandQueue.push(new InstantCommand([&]() {
+		hoodCylinder.set_value(1);
+		// scoreLong();
+	}));
+	commandQueue.push(new InstantCommand([&]() {
+		hood.retractPiston();
+		// scoreLong();
+	}));
+	commandQueue.push(new InstantCommand([&]() {
+		hood.extendPiston();
+		// scoreLong();
+	}));
+	commandQueue.push(new InstantCommand([&]() {
+		hood.retractPiston();
+		// scoreLong();
+	}));
+	commandQueue.push(new InstantCommand([&]() {
+		hood.extendPiston();
+		// scoreLong();
+	}));
+	commandQueue.push(new InstantCommand([&]() {
+		hood.retractPiston();
+		// scoreLong();
+	}));
+	commandQueue.push(new InstantCommand([&]() {
+		hood.extendPiston();
+		// scoreLong();
+	}));
+
+	
+
+	// commandQueue.push(new TurnToHeading(driveBase, odom, 90.0));
+
+	// commandQueue.push(new DriveDistance(driveBase, odom, 24.0, 100000));
+	// commandQueue.push(new TurnToHeading(driveBase, odom, 180.0));
+
+	// commandQueue.push(new DriveDistance(driveBase, odom, 24.0, 100000));
+	// commandQueue.push(new TurnToHeading(driveBase, odom, 270.0));
+
+	// commandQueue.push(new DriveDistance(driveBase, odom, 24.0, 10000));
+	// 	commandQueue.push(new TurnToHeading(driveBase, odom, 0.0));
+	
+	// commandQueue.push(new TimeoutCommand(500));
+	// commandQueue.push(new DriveDistance(driveBase, odom, 24.0, 100000));
+	// commandQueue.push(new TurnToHeading(driveBase, odom, 0.0, 100000));
+	// commandQueue.push(new DriveDistance(driveBase, odom, 24.0, 100000));
+	// commandQueue.push(new TurnToHeading(tankdrive, odom, 180.0));
+	// commandQueue.push(new DriveDistance(tankdrive, odom, 24.0));
+	// commandQueue.push(new TurnToHeading(tankdrive, odom, 270.0));
+	// commandQueue.push(new DriveDistance(tankdrive, odom, 24.0));
+	// commandQueue.push(new TurnToHeading(tankdrive, odom, 0.0));
+}

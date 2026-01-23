@@ -14,6 +14,7 @@ extern Pneumatics scraper;
 extern Pneumatics hood;
 extern DrivebaseIMUOdometry odom;
 extern pros::IMU imu;
+extern std::queue<Command*> commandQueue;
 
 void opcontrolInit();
 void robotInit();

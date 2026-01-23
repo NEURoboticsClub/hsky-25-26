@@ -43,7 +43,10 @@ void competition_initialize() {}
  * will be stopped. Re-enabling the robot will restart the task, not re-start it
  * from where it left off.
  */
-void autonomous() {}
+void autonomous() {
+	CommandRunner commandRunner(commandQueue);
+	commandRunner.run();
+}
 
 /**
  * Runs the operator control code. This function will be started in its own task
@@ -63,58 +66,9 @@ void opcontrol() {
 
 	controller.initialize();
 
-	std::queue<Command*> commandQueue;
 
-	// commandQueue.push(new DriveDistance(driveBase, odom, -24.0, 100000));
-	// commandQueue.push(new TurnToHeading(driveBase, odom, 90.0, 100000));
-	// commandQueue.push(new TimeoutCommand(500));
-	// commandQueue.push(new TurnToHeading(driveBase, odom, 180.0, 100000));
-	// commandQueue.push(new TimeoutCommand(500));
-	// commandQueue.push(new TurnToHeading(driveBase, odom, 270.0, 100000));
-	// commandQueue.push(new TimeoutCommand(500));
-	// commandQueue.push(new TurnToHeading(driveBase, odom, 0.0, 100000));
-
-	
-	
-	commandQueue.push(new DriveDistance(driveBase, odom, 36.0, 100000));
-	commandQueue.push(new TurnToHeading(driveBase, odom, 90.0));
-	commandQueue.push(new InstantCommand([&]() {
-		scraper.retractPiston();
-		lowerScoring.moveIn();
-	}));
-	// commandQueue.push(new InstantCommand([&]() {
-		
-	// }));
-	commandQueue.push(new DriveDistance(driveBase, odom, 12, 100000));
-	
-
-	// commandQueue.push(new TurnToHeading(driveBase, odom, 90.0));
-
-	commandQueue.push(new DriveDistance(driveBase, odom, 24.0, 100000));
-	commandQueue.push(new TurnToHeading(driveBase, odom, 180.0));
-
-	commandQueue.push(new DriveDistance(driveBase, odom, 24.0, 100000));
-	commandQueue.push(new TurnToHeading(driveBase, odom, 270.0));
-
-	commandQueue.push(new DriveDistance(driveBase, odom, 24.0, 10000));
-		commandQueue.push(new TurnToHeading(driveBase, odom, 0.0));
-	
-	// commandQueue.push(new TimeoutCommand(500));
-	// commandQueue.push(new DriveDistance(driveBase, odom, 24.0, 100000));
-	// commandQueue.push(new TurnToHeading(driveBase, odom, 0.0, 100000));
-	// commandQueue.push(new DriveDistance(driveBase, odom, 24.0, 100000));
-	// commandQueue.push(new TurnToHeading(tankdrive, odom, 180.0));
-	// commandQueue.push(new DriveDistance(tankdrive, odom, 24.0));
-	// commandQueue.push(new TurnToHeading(tankdrive, odom, 270.0));
-	// commandQueue.push(new DriveDistance(tankdrive, odom, 24.0));
-	// commandQueue.push(new TurnToHeading(tankdrive, odom, 0.0));
-
-	CommandRunner commandRunner(commandQueue);
-	commandRunner.run();
-
-	// while (true) {
-	// 	driveBase.arcadeDrive(controller.AxisLeftY.position(), controller.AxisRightX.position());
-
-	// 	pros::delay(20);
-	// }
+	while (true) {
+		driveBase.arcadeDrive(controller.AxisLeftY.position(), controller.AxisRightX.position());
+		pros::delay(20);
+	}
 }
