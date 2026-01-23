@@ -76,8 +76,20 @@ void opcontrol() {
 	// commandQueue.push(new TurnToHeading(driveBase, odom, 0.0, 100000));
 
 	
-	commandQueue.push(new DriveDistance(driveBase, odom, 24.0, 100000));
+	
+	commandQueue.push(new DriveDistance(driveBase, odom, 36.0, 100000));
 	commandQueue.push(new TurnToHeading(driveBase, odom, 90.0));
+	commandQueue.push(new InstantCommand([&]() {
+		scraper.retractPiston();
+		lowerScoring.moveIn();
+	}));
+	// commandQueue.push(new InstantCommand([&]() {
+		
+	// }));
+	commandQueue.push(new DriveDistance(driveBase, odom, 12, 100000));
+	
+
+	// commandQueue.push(new TurnToHeading(driveBase, odom, 90.0));
 
 	commandQueue.push(new DriveDistance(driveBase, odom, 24.0, 100000));
 	commandQueue.push(new TurnToHeading(driveBase, odom, 180.0));
