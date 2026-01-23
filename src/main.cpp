@@ -46,6 +46,9 @@ void competition_initialize() {}
 void autonomous() {
 	CommandRunner commandRunner(commandQueue);
 	commandRunner.run();
+	while(true) {
+		pros::delay(20);
+	}
 }
 
 /**
