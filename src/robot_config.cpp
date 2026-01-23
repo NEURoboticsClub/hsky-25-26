@@ -14,7 +14,7 @@ std::queue<Command*> commandQueue;
 // ##################### Configuration #####################
 // ---------------------------------------------------------
 #define ROBOT_2
-#define RED
+#define BLUE
 
 
 
@@ -74,7 +74,7 @@ Pneumatics wing(wingCylinder);
 //---------------------------------------------------
 
 #elifdef ROBOT_2
-bool isLeft = true;
+bool isLeft = false; // TODO: Should be true
 
 //===================== CONFIG =====================
 
@@ -226,18 +226,18 @@ void constructAuton(bool isLeft, bool isRed) {
 		stopAll();
 	}));
 
-	// Spit out again to avoid getting stuck
-	commandQueue.push(new InstantCommand([&]() {
-		intakeField();
-	}));
-	commandQueue.push(new TimeoutCommand(250));
-	commandQueue.push(new InstantCommand([&]() {
-		scoreLower();
-	}));
-	commandQueue.push(new WaitUntilColorSensor(opticalSensor, isRed, 1000));
-	commandQueue.push(new InstantCommand([&]() {
-		stopAll();
-	}));
+	// // Spit out again to avoid getting stuck
+	// commandQueue.push(new InstantCommand([&]() {
+	// 	intakeField();
+	// }));
+	// commandQueue.push(new TimeoutCommand(250));
+	// commandQueue.push(new InstantCommand([&]() {
+	// 	scoreLower();
+	// }));
+	// commandQueue.push(new WaitUntilColorSensor(opticalSensor, isRed, 1000));
+	// commandQueue.push(new InstantCommand([&]() {
+	// 	stopAll();
+	// }));
 
 	// Drive to goal
 	commandQueue.push(new TurnToHeading(driveBase, odom, isLeft ? 90.0 : 270.0));
@@ -249,7 +249,7 @@ void constructAuton(bool isLeft, bool isRed) {
 	}));
 	commandQueue.push(new TimeoutCommand(1000));
 	commandQueue.push(new DriveDistance(driveBase, odom, -7, 1000));
-	commandQueue.push(new TimeoutCommand(2000));
+	commandQueue.push(new TimeoutCommand(1000));
 	commandQueue.push(new InstantCommand([&]() {
 		stopAll();
 	}));
@@ -260,7 +260,7 @@ void constructAuton(bool isLeft, bool isRed) {
 	}));
 	commandQueue.push(new DriveDistance(driveBase, odom, 18, 1500));
 	commandQueue.push(new TimeoutCommand(100));
-	commandQueue.push(new DriveDistance(driveBase, odom, 15, 1500));
+	commandQueue.push(new DriveDistance(driveBase, odom, 16, 1500));
 
 	// Intake
 	commandQueue.push(new TimeoutCommand(2000));
@@ -276,14 +276,19 @@ void constructAuton(bool isLeft, bool isRed) {
 	commandQueue.push(new InstantCommand([&]() {
 		scoreLong();
 	}));
-	commandQueue.push(new TimeoutCommand(3000));
+	commandQueue.push(new TimeoutCommand(5000));
 
-	// Stop and extend hood
+	// Stop and flip hood
 	commandQueue.push(new InstantCommand([&]() {
 		hood.retractPiston();
 		stopAll();
 	}));
-	commandQueue.push(new TimeoutCommand(10000));
+	commandQueue.push(new TimeoutCommand(1000));
+	commandQueue.push(new InstantCommand([&]() {
+		hood.extendPiston();
+		stopAll();
+	}));
+	commandQueue.push(new TimeoutCommand(100000));
 }
 
 void opcontrolInit() {
