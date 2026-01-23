@@ -200,9 +200,8 @@ void stopAll() {
 
 void constructAuton(bool isLeft, bool isRed) {
 	// Drive to loader
-	commandQueue.push(new DriveDistance(driveBase, odom, 40.0, 100000));
+	commandQueue.push(new DriveDistance(driveBase, odom, 40.0, 1500));
 	commandQueue.push(new TurnToHeading(driveBase, odom, isLeft ? 90.0: 270.0));
-	commandQueue.push(new TimeoutCommand(100));
 
 	// Intake from loader
 	commandQueue.push(new InstantCommand([&]() {
@@ -215,7 +214,7 @@ void constructAuton(bool isLeft, bool isRed) {
 	}));
 	
 	// Back up and turn to corner
-	commandQueue.push(new DriveDistance(driveBase, odom, -25, 2500));
+	commandQueue.push(new DriveDistance(driveBase, odom, -25, 1500));
 	commandQueue.push(new TurnToHeading(driveBase, odom, isLeft ? 45.0 : 315.0));
 
 	// Spit out wrong color
@@ -242,14 +241,14 @@ void constructAuton(bool isLeft, bool isRed) {
 
 	// Drive to goal
 	commandQueue.push(new TurnToHeading(driveBase, odom, isLeft ? 90.0 : 270.0));
-	commandQueue.push(new DriveDistance(driveBase, odom, -18, 2500));
+	commandQueue.push(new DriveDistance(driveBase, odom, -18, 1500));
 
 	// Score
 	commandQueue.push(new InstantCommand([&]() {
 		scoreLong();
 	}));
 	commandQueue.push(new TimeoutCommand(1000));
-	commandQueue.push(new DriveDistance(driveBase, odom, -7, 2000));
+	commandQueue.push(new DriveDistance(driveBase, odom, -7, 1000));
 	commandQueue.push(new TimeoutCommand(2000));
 	commandQueue.push(new InstantCommand([&]() {
 		stopAll();
@@ -259,9 +258,9 @@ void constructAuton(bool isLeft, bool isRed) {
 	commandQueue.push(new InstantCommand([&]() {
 		intakeLoader();
 	}));
-	commandQueue.push(new DriveDistance(driveBase, odom, 18, 2500));
+	commandQueue.push(new DriveDistance(driveBase, odom, 18, 1500));
 	commandQueue.push(new TimeoutCommand(100));
-	commandQueue.push(new DriveDistance(driveBase, odom, 15, 2500));
+	commandQueue.push(new DriveDistance(driveBase, odom, 15, 1500));
 
 	// Intake
 	commandQueue.push(new TimeoutCommand(2000));
@@ -271,7 +270,7 @@ void constructAuton(bool isLeft, bool isRed) {
 
 	// Go to goal
 	commandQueue.push(new TurnToHeading(driveBase, odom, isLeft ? 90.0 : 270.0));
-	commandQueue.push(new DriveDistance(driveBase, odom, -37, 2500));
+	commandQueue.push(new DriveDistance(driveBase, odom, -37, 1500));
 
 	// Score
 	commandQueue.push(new InstantCommand([&]() {
