@@ -207,6 +207,9 @@ void opcontrolInit() {
 
 void robotInit() { 
 	deviceInit(); 
+	commandQueue.push(new InstantCommand([&]() {
+		scoreLong();
+	}));
 	// commandQueue.push(new DriveDistance(driveBase, odom, -24.0, 100000));
 	// commandQueue.push(new TurnToHeading(driveBase, odom, 90.0, 100000));
 	// commandQueue.push(new TimeoutCommand(500));
@@ -234,40 +237,6 @@ void robotInit() {
 	// 	scraper.retractPiston();
 	// }));
 	// commandQueue.push(new DriveDistance(driveBase, odom, -25, 1500));
-	commandQueue.push(new InstantCommand([&]() {
-		// hood.retractPiston();
-		hoodCylinder.set_value(0);
-		// scoreLong();
-	}));
-	commandQueue.push(new InstantCommand([&]() {
-		hoodCylinder.set_value(1);
-		// scoreLong();
-	}));
-	commandQueue.push(new InstantCommand([&]() {
-		hood.retractPiston();
-		// scoreLong();
-	}));
-	commandQueue.push(new InstantCommand([&]() {
-		hood.extendPiston();
-		// scoreLong();
-	}));
-	commandQueue.push(new InstantCommand([&]() {
-		hood.retractPiston();
-		// scoreLong();
-	}));
-	commandQueue.push(new InstantCommand([&]() {
-		hood.extendPiston();
-		// scoreLong();
-	}));
-	commandQueue.push(new InstantCommand([&]() {
-		hood.retractPiston();
-		// scoreLong();
-	}));
-	commandQueue.push(new InstantCommand([&]() {
-		hood.extendPiston();
-		// scoreLong();
-	}));
-
 	
 
 	// commandQueue.push(new TurnToHeading(driveBase, odom, 90.0));
