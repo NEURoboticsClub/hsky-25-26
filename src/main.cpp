@@ -63,7 +63,6 @@ void opcontrol() {
 
 	controller.initialize();
 
-
 	std::queue<Command*> commandQueue;
 
 	// commandQueue.push(new DriveDistance(driveBase, odom, -24.0, 100000));
