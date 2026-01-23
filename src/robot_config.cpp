@@ -7,7 +7,7 @@
 #include "pros/adi.hpp"
 #include "pros/motors.h"
 
-#define ROBOT_2
+#define ROBOT_1
 
 HskyController controller(pros::E_CONTROLLER_MASTER);
 
@@ -29,7 +29,7 @@ robot_specs_t robotConfig{.driveWheelDiam = 0.0,
 
 //===================== DEVICES =====================
 
-pros::MotorGroup leftDriveMotors({-12, 13, -14, 15});
+pros::MotorGroup leftDriveMotors({-11, 12, -13, 14});
 pros::MotorGroup rightDriveMotors({17, -18, 19, -20});
 
 pros::MotorGroup intakeMotors({6});
@@ -162,7 +162,7 @@ void stopAll() {
 void deviceInit() {}
 
 void opcontrolInit() {
-	controller.ButtonR1.onPressed([]() { scoreUpper(); });
+	controller.ButtonR1.onHold([]() { scoreUpper(); });
 	controller.ButtonR1.onReleased([]() { stopAll(); });
 
 	controller.ButtonR2.onPressed([]() { scoreLong(); });
