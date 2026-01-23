@@ -25,13 +25,6 @@ std::queue<Command*> commandQueue;
 #ifdef ROBOT_1
 bool isLeft = false;
 
-// // Construct auton
-// #ifdef RED
-// constructAuton(false, true);
-// #else
-// constructAuton(false, false);
-// #endif
-
 // //===================== CONFIG =====================
 
 // robot_specs_t robotConfig{.driveWheelDiam = 0.0,
@@ -82,13 +75,6 @@ Pneumatics wing(wingCylinder);
 
 #elifdef ROBOT_2
 bool isLeft = true;
-
-// // Construct auton
-// #ifdef RED
-// constructAuton(true, true);
-// #else
-// constructAuton(true, false);
-// #endif
 
 //===================== CONFIG =====================
 
