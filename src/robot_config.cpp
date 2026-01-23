@@ -214,27 +214,27 @@ void constructAuton(bool isLeft, bool isRed) {
 	}));
 	
 	// Back up and turn to corner
-	commandQueue.push(new DriveDistance(driveBase, odom, -25, 1500));
+	commandQueue.push(new DriveDistance(driveBase, odom, -22, 1500));
 	commandQueue.push(new TurnToHeading(driveBase, odom, isLeft ? 45.0 : 315.0));
 
 	// Spit out wrong color
 	commandQueue.push(new InstantCommand([&]() {
 		scoreLower();
 	}));
-	commandQueue.push(new WaitUntilColorSensor(opticalSensor, isRed, 3000));
+	commandQueue.push(new WaitUntilColorSensor(opticalSensor, isRed, 2000));
 	commandQueue.push(new InstantCommand([&]() {
 		stopAll();
 	}));
 
 	// Spit out again to avoid getting stuck
 	commandQueue.push(new InstantCommand([&]() {
-		intakeLoader();
+		intakeField();
 	}));
 	commandQueue.push(new TimeoutCommand(250));
 	commandQueue.push(new InstantCommand([&]() {
 		scoreLower();
 	}));
-	commandQueue.push(new WaitUntilColorSensor(opticalSensor, isRed, 350));
+	commandQueue.push(new WaitUntilColorSensor(opticalSensor, isRed, 1000));
 	commandQueue.push(new InstantCommand([&]() {
 		stopAll();
 	}));
@@ -280,7 +280,7 @@ void constructAuton(bool isLeft, bool isRed) {
 
 	// Stop and extend hood
 	commandQueue.push(new InstantCommand([&]() {
-		hood.extendPiston();
+		hood.retractPiston();
 		stopAll();
 	}));
 	commandQueue.push(new TimeoutCommand(10000));
