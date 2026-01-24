@@ -13,7 +13,7 @@ std::queue<Command *> commandQueue;
 // ---------------------------------------------------------
 // ##################### Configuration #####################
 // ---------------------------------------------------------
-#define ROBOT_2
+#define ROBOT_1
 #define BLUE
 
 //---------------------------------------------------
@@ -25,21 +25,27 @@ bool isLeft = false;
 
 // //===================== CONFIG =====================
 
-// robot_specs_t robotConfig{.driveWheelDiam = 0.0,
-// 						  .trackWidth = 0.0,
-// 						  .odomWheelDiam = 0.0,
-// 						  .maxDrivePct = 0,
-// 						  .maxTurnPct = 0,
-// 						  .drivePID = nullptr,
-// 						  .turnPID = nullptr};
+PIDController drivePid(0.1, 0.0, 0, PIDController::ERROR_TYPE::LINEAR);
+// PIDController drivePid(0.15, 0.0, 0.05, PIDController::ERROR_TYPE::LINEAR);
+PIDController turnPid(53.0, 0.67, 115.0, PIDController::ERROR_TYPE::ANGULAR);
+
+robot_specs_t robotConfig{.driveWheelDiam = 0.0,
+						  .trackWidth = 11.0,
+						  .odomWheelDiam = 0.0,
+						  .maxDrivePct = 0,
+						  .maxTurnPct = 0,
+						  .drivePID = &drivePid,
+						  .turnPID = &turnPid};
 
 // //===================== DEVICES =====================
 
 pros::MotorGroup leftDriveMotors({-11, 12, -13, 14});
 pros::MotorGroup rightDriveMotors({17, -18, 19, -20});
 
-pros::MotorGroup intakeMotors({6});
-pros::MotorGroup lowerScoringMotors({-9});
+pros::IMU imu(16);
+
+pros::MotorGroup intakeMotors({9});
+pros::MotorGroup lowerScoringMotors({-6});
 pros::MotorGroup upperScoringMotors({4});
 
 pros::adi::DigitalOut scraperCylinder('c');
@@ -49,21 +55,19 @@ pros::adi::DigitalOut wingCylinder('b');
 pros::Optical opticalSensor(15);
 
 // //==================== SUBSYSTEMS ====================
-// TankDrive driveBase(leftDriveMotors, rightDriveMotors, DriveStyle::ARCADE,
+DrivebaseIMUOdometry odom(&leftDriveMotors, &rightDriveMotors, &imu,
+						  pros::E_MOTOR_GEAR_600, robotConfig.trackWidth);
 
-// 					pros::E_MOTOR_BRAKE_COAST, pros::E_MOTOR_GEAR_600, 1.0,
+TankDrive driveBase(leftDriveMotors, rightDriveMotors, DriveStyle::ARCADE,
+					pros::E_MOTOR_BRAKE_COAST, pros::E_MOTOR_GEAR_600, 1.0,
+					robotConfig, &odom);
+Transport lowerScoring(lowerScoringMotors, 1, pros::E_MOTOR_BRAKE_COAST,
+					   pros::E_MOTOR_GEAR_600);
+Transport upperScoring(upperScoringMotors, 1, pros::E_MOTOR_BRAKE_COAST,
+					   pros::E_MOTOR_GEAR_600);
 
-// 					robotConfig);
-
-// Transport intake(intakeMotors, 0.75, pros::E_MOTOR_BRAKE_COAST,
-
-// 				 pros::E_MOTOR_GEAR_600);
-// Transport lowerScoring(lowerScoringMotors, 0.75, pros::E_MOTOR_BRAKE_COAST,
-
-// 					   pros::E_MOTOR_GEAR_600);
-// Transport upperScoring(upperScoringMotors, 0.75, pros::E_MOTOR_BRAKE_COAST,
-
-// 					   pros::E_MOTOR_GEAR_600);
+Transport intake(intakeMotors, 1, pros::E_MOTOR_BRAKE_COAST,
+				 pros::E_MOTOR_GEAR_600);
 
 Pneumatics scraper(scraperCylinder);
 Pneumatics hood(hoodCylinder);
@@ -101,12 +105,12 @@ pros::MotorGroup intakeMotors({9});
 pros::MotorGroup lowerScoringMotors({-10});
 pros::MotorGroup upperScoringMotors({1});
 
-pros::adi::DigitalOut scraperCylinder('h');
-pros::adi::DigitalOut hoodCylinder('g');
-pros::adi::DigitalOut wingCylinder('a');
+pros::adi::DigitalOut scraperCylinder('b');
+pros::adi::DigitalOut hoodCylinder('a');
+pros::adi::DigitalOut wingCylinder('c');
 
 DrivebaseIMUOdometry odom(&leftDriveMotors, &rightDriveMotors, &imu,
-						  pros::E_MOTOR_GEAR_600, robotConfig.trackWidth);
+						  pros::E_MOTOePistoR_GEAR_600, robotConfig.trackWidth);
 
 //==================== SUBSYSTEMS ====================
 
@@ -163,7 +167,7 @@ void scoreUpper() {
 void scoreLower() {
 	scraper.retractPiston();
 	upperScoring.moveOut();
-	lowerScoring.moveOut();
+	lowerScoring.moveOut(0);
 	intake.moveOut(60);
 }
 
@@ -226,7 +230,7 @@ void constructAuton(bool isLeft, bool isRed) {
 	// commandQueue.push(new InstantCommand([&]() {
 	// 	scoreLower();
 	// }));
-	// commandQueue.push(new WaitUntilColorSensor(opticalSensor, isRed, 1000));
+	// commandQueue.push(new WaitUntilColorSensor(opticalSensor, isRed, 1000));ePisto
 	// commandQueue.push(new InstantCommand([&]() {
 	// 	stopAll();
 	// }));
@@ -289,8 +293,8 @@ void opcontrolInit() {
 	controller.ButtonR2.onReleased([]() { stopAll(); });
 
 	// Hood
-	controller.ButtonY.onPressed([]() { hood.extendPiston(); });
-	controller.ButtonY.onReleased([]() { hood.retractPiston(); });
+	controller.ButtonY.onPressed([]() { hood.retractPiston(); });
+	controller.ButtonY.onReleased([]() { hood.extendPiston(); });
 
 	// Score Lower
 	controller.ButtonL1.onPressed([]() { scoreLower(); });
@@ -301,7 +305,7 @@ void opcontrolInit() {
 	controller.ButtonL2.onReleased([]() { stopAll(); });
 
 	// Upper Scoring Backward
-	controller.ButtonLeft.onPressed([]() { upperScoring.moveIn(); });
+	controller.ButtonLeft.onPressed([]() { upperScoring.moveOut(); });
 	controller.ButtonLeft.onReleased([]() { stopAll(); });
 
 	// Scraper
