@@ -74,7 +74,7 @@ Pneumatics wing(wingCylinder);
 //---------------------------------------------------
 
 #elifdef ROBOT_2
-bool isLeft = false; // TODO: Should be true
+bool isLeft = true; // TODO: Should be true
 
 //===================== CONFIG =====================
 
