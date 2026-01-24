@@ -14,7 +14,7 @@ std::queue<Command *> commandQueue;
 // ##################### Configuration #####################
 // ---------------------------------------------------------
 #define ROBOT_1
-#define RED
+#define BLUE
 
 //---------------------------------------------------
 // ##################### Robot 1 #####################
@@ -27,8 +27,8 @@ bool isLeft = false;
 
 PIDController drivePid(0.1, 0.0, 0, PIDController::ERROR_TYPE::LINEAR);
 // PIDController drivePid(0.15, 0.0, 0.05, PIDController::ERROR_TYPE::LINEAR);
-PIDController turnPid(53.0, 0.67, 115.0, PIDController::ERROR_TYPE::ANGULAR);
-// PIDController turnPid(53.0, 0, 90.0, PIDController::ERROR_TYPE::ANGULAR);
+// PIDController turnPid(53.0, 0.67, 115.0, PIDController::ERROR_TYPE::ANGULAR);
+PIDController turnPid(53.0, 0, 90.0, PIDController::ERROR_TYPE::ANGULAR);
 
 robot_specs_t robotConfig{.driveWheelDiam = 0.0,
 						  .trackWidth = 11.0,
@@ -226,7 +226,7 @@ void constructAuton(bool isLeft, bool isRed) {
 	// Intake from loader
 	commandQueue.push(new InstantCommand([&]() { intakeLoader(); }));
 	commandQueue.push(new DriveDistance(driveBase, odom, 18, 1400));
-	commandQueue.push(new TimeoutCommand(1000));
+	commandQueue.push(new TimeoutCommand(2000));
 	commandQueue.push(new InstantCommand([&]() {
 		stopAll();
 	}));
@@ -234,7 +234,7 @@ void constructAuton(bool isLeft, bool isRed) {
 	// Back up and turn to corner
 	commandQueue.push(new DriveDistance(driveBase, odom, -22, 1500));
 	// commandQueue.push(new TurnToHeading(driveBase, odom, isLeft ? 45.0 : 315.0));
-	commandQueue.push(new TurnToHeading(driveBase, odom, isLeft ? 55.0 : 305.0));
+	commandQueue.push(new TurnToHeading(driveBase, odom, isLeft ? 45.0 : 315.0));
 
 	// Spit out wrong color
 	commandQueue.push(new InstantCommand([&]() { scoreLower(); }));
@@ -278,7 +278,7 @@ void constructAuton(bool isLeft, bool isRed) {
 	// Intake
 	// commandQueue.push(;
 	commandQueue.push(new TurnToHeading(driveBase, odom, isLeft ? 90.0 : 270.0, 100));
-	commandQueue.push(new TimeoutCommand(1000));
+	commandQueue.push(new TimeoutCommand(2000));
 	commandQueue.push(new InstantCommand([&]() {
 		stopAll();
 	}));
@@ -287,7 +287,10 @@ void constructAuton(bool isLeft, bool isRed) {
 	commandQueue.push(
 		new TurnToHeading(driveBase, odom, isLeft ? 90.0 : 270.0));
 	commandQueue.push(new DriveDistance(driveBase, odom, -37, 1500));
-
+	commandQueue.push(new InstantCommand([&]() {
+		lowerScoring.moveOut();
+	}));
+	commandQueue.push(new TimeoutCommand(200));
 	// Score
 	commandQueue.push(new InstantCommand([&]() {
 		scoreLong();
