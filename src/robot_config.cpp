@@ -13,7 +13,7 @@ std::queue<Command *> commandQueue;
 // ---------------------------------------------------------
 // ##################### Configuration #####################
 // ---------------------------------------------------------
-#define ROBOT_2
+#define ROBOT_1
 #define RED
 
 //---------------------------------------------------
@@ -28,6 +28,7 @@ bool isLeft = false;
 PIDController drivePid(0.1, 0.0, 0, PIDController::ERROR_TYPE::LINEAR);
 // PIDController drivePid(0.15, 0.0, 0.05, PIDController::ERROR_TYPE::LINEAR);
 PIDController turnPid(53.0, 0.67, 115.0, PIDController::ERROR_TYPE::ANGULAR);
+// PIDController turnPid(53.0, 0, 90.0, PIDController::ERROR_TYPE::ANGULAR);
 
 robot_specs_t robotConfig{.driveWheelDiam = 0.0,
 						  .trackWidth = 11.0,
@@ -48,9 +49,9 @@ pros::MotorGroup intakeMotors({9});
 pros::MotorGroup lowerScoringMotors({-6});
 pros::MotorGroup upperScoringMotors({4});
 
-pros::adi::DigitalOut scraperCylinder('c');
+pros::adi::DigitalOut scraperCylinder('b');
 pros::adi::DigitalOut hoodCylinder('a');
-pros::adi::DigitalOut wingCylinder('b');
+pros::adi::DigitalOut wingCylinder('c');
 
 pros::Optical opticalSensor(15);
 
