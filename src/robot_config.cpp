@@ -105,12 +105,12 @@ pros::MotorGroup intakeMotors({9});
 pros::MotorGroup lowerScoringMotors({-10});
 pros::MotorGroup upperScoringMotors({1});
 
-pros::adi::DigitalOut scraperCylinder('b');
-pros::adi::DigitalOut hoodCylinder('a');
-pros::adi::DigitalOut wingCylinder('c');
+pros::adi::DigitalOut scraperCylinder('h');
+pros::adi::DigitalOut hoodCylinder('g');
+pros::adi::DigitalOut wingCylinder('f');
 
 DrivebaseIMUOdometry odom(&leftDriveMotors, &rightDriveMotors, &imu,
-						  pros::E_MOTOePistoR_GEAR_600, robotConfig.trackWidth);
+						  pros::E_MOTOR_GEAR_600, robotConfig.trackWidth);
 
 //==================== SUBSYSTEMS ====================
 
