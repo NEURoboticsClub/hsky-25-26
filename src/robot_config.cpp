@@ -60,7 +60,7 @@ DrivebaseIMUOdometry odom(&leftDriveMotors, &rightDriveMotors, &imu,
 						  pros::E_MOTOR_GEAR_600, robotConfig.trackWidth);
 
 TankDrive driveBase(leftDriveMotors, rightDriveMotors, DriveStyle::ARCADE,
-					pros::E_MOTOR_BRAKE_COAST, pros::E_MOTOR_GEAR_600, 1.0,
+					pros::E_MOTOR_BRAKE_COAST, pros::E_MOTOR_GEAR_600, 1.0, 0.75,
 					robotConfig, &odom);
 Transport lowerScoring(lowerScoringMotors, 1, pros::E_MOTOR_BRAKE_COAST,
 					   pros::E_MOTOR_GEAR_600);
@@ -116,7 +116,7 @@ DrivebaseIMUOdometry odom(&leftDriveMotors, &rightDriveMotors, &imu,
 //==================== SUBSYSTEMS ====================
 
 TankDrive driveBase(leftDriveMotors, rightDriveMotors, DriveStyle::ARCADE,
-					pros::E_MOTOR_BRAKE_COAST, pros::E_MOTOR_GEAR_600, 1.0,
+					pros::E_MOTOR_BRAKE_COAST, pros::E_MOTOR_GEAR_600, 1.0, 1.0,
 					robotConfig, &odom);
 Transport lowerScoring(lowerScoringMotors, 1, pros::E_MOTOR_BRAKE_COAST,
 					   pros::E_MOTOR_GEAR_600);
@@ -219,6 +219,9 @@ void constructAuton(bool isLeft, bool isRed) {
 	
 
 	// Drive to loader
+	commandQueue.push(new InstantCommand([&]() {
+		imu.tare();
+	}));
 	commandQueue.push(new DriveDistance(driveBase, odom, 40.0, 1500));
 	commandQueue.push(
 		new TurnToHeading(driveBase, odom, isLeft ? 90.0 : 270.0));
