@@ -2,6 +2,7 @@
 
 #include <hskylib/robot_specs.h>
 #include <hskylib/subsystems/pneumatics.h>
+#include <hskylib/utils/commands/drive_commands.h>
 #include <hskylib/utils/utils.h>
 
 #include "pros/adi.hpp"
@@ -25,17 +26,18 @@ bool isLeft = false;
 
 // //===================== CONFIG =====================
 
-PIDController drivePid(10, 0.0, 0, PIDController::ERROR_TYPE::LINEAR);
+PIDController drivePid(7.0, 0.0, 0, PIDController::ERROR_TYPE::LINEAR);
 // PIDController drivePid(0.15, 0.0, 0.05, PIDController::ERROR_TYPE::LINEAR);
 // PIDController turnPid(53.0, 0.67, 115.0, PIDController::ERROR_TYPE::ANGULAR);
 // PIDController turnPid(130.0, 10, 90.0, PIDController::ERROR_TYPE::ANGULAR);
-PIDController turnPid(90.0, 2.0, 0.0, PIDController::ERROR_TYPE::ANGULAR);
+// PIDController turnPid(70.0, 0.0, 0.0, PIDController::ERROR_TYPE::ANGULAR);
+PIDController turnPid(80.0, 2.0, 750.0, PIDController::ERROR_TYPE::ANGULAR);
 PIDController headingPid(0.0, 0, 0.0, PIDController::ERROR_TYPE::ANGULAR);
 
 robot_specs_t robotConfig{.driveWheelDiameter = 2.75,
 						  .trackWidth = 11.0,
 						  .odomPodDiameter = 0.0,
-						  .maxDrivePct = 15,
+						  .maxDrivePct = 30,
 						  .maxTurnPct = 100,
 						  .drivePID = &drivePid,
 						  .headingPID = &headingPid,
@@ -357,7 +359,7 @@ void constructSkillsAuton(bool isLeft, bool isRed) {
 
 	commandQueue.push(new InstantCommand([&]() { stopAll(); }));
 	commandQueue.push(
-		new DriveDistance(driveBase, odom, robotConfig, -84, 3500));
+		new DriveDistance(driveBase, odom, robotConfig, -84, 2500));
 	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 0.0));
 	// commandQueue.push(new InstantCommand([&]() {
 	// 	scraper.retractPiston();
@@ -416,7 +418,7 @@ void constructSkillsAuton(bool isLeft, bool isRed) {
 		new TurnToHeading(driveBase, odom, robotConfig, isLeft ? 270.0 : 90.0));
 	commandQueue.push(new TimeoutCommand(1000));
 	commandQueue.push(
-		new DriveDistance(driveBase, odom, robotConfig, -120, 4500));
+		new DriveDistance(driveBase, odom, robotConfig, -120, 2500));
 	commandQueue.push(
 		new DriveDistance(driveBase, odom, robotConfig, -10, 500));
 
@@ -474,11 +476,11 @@ void constructTuningAuton(bool isLeft, bool isRed) {
 	// 	new DriveDistance(driveBase, odom, robotConfig, 20.0, 1500));
 	commandQueue.push(new InstantCommand([&]() { imu.tare(); }));
 	commandQueue.push(new TimeoutCommand(100));
-	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 90.0));
-	commandQueue.push(new TimeoutCommand(5000));
+	commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, 10.0, 99999));
+	commandQueue.push(new TimeoutCommand(1000));
+	commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, -10.0, 99999));
 	// commandQueue.push(
 	// 	new DriveDistance(driveBase, odom, robotConfig, 20.0, 1500));
-	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 180.0));
 }
 
 #ifdef ROBOT_1
@@ -581,5 +583,5 @@ void opcontrolInit() {
 
 void robotInit() {
 	deviceInit();
-	constructTuningAuton(isLeft, isRed);
+	constructSkillsAuton(false, true);
 }
