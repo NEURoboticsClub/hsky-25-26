@@ -88,20 +88,21 @@ bool isLeft = true;	 // TODO: Should be true
 
 //===================== CONFIG =====================
 
-PIDController drivePid(5.0, 0.0, 0, PIDController::ERROR_TYPE::LINEAR);
+PIDController drivePid(7.0, 0.0, 0, PIDController::ERROR_TYPE::LINEAR);
 // PIDController drivePid(0.15, 0.0, 0.05, PIDController::ERROR_TYPE::LINEAR);
-PIDController turnPid(50.0, 0.0, 0.0, PIDController::ERROR_TYPE::ANGULAR);
+PIDController turnPid(80.0, 0.0 , 0.0, PIDController::ERROR_TYPE::ANGULAR);
 PIDController headingPid(0.0, 0, 0.0, PIDController::ERROR_TYPE::ANGULAR);
+// PIDController headingPid(60.0, 0.0, 0.0, PIDController::ERROR_TYPE::ANGULAR);
+
 
 robot_specs_t robotConfig{.driveWheelDiameter = 2.75,
 						  .trackWidth = 11.0,
 						  .odomPodDiameter = 0.0,
-						  .maxDrivePct = 100,
-						  .maxTurnPct = 100,
+						  .maxDrivePct = 30,
+						  .maxTurnPct = 80,
 						  .drivePID = &drivePid,
 						  .headingPID = &headingPid,
 						  .turnPID = &turnPid};
-
 //===================== DEVICES =====================
 
 pros::MotorGroup leftDriveMotors({11, -12, 13, -14});
@@ -350,7 +351,7 @@ void constructSkillsAuton(bool isLeft, bool isRed) {
 	commandQueue.push(new InstantCommand([&]() { scoreLong(); }));
 	// Drive towards center
 	commandQueue.push(
-		new TurnToHeading(driveBase, odom, robotConfig, isLeft ? 0.0 : 180.0));
+		new TurnToHeading(driveBase, odom, robotConfig, 180.0));
 	commandQueue.push(
 		new DriveDistance(driveBase, odom, robotConfig, 18, 1500));
 
