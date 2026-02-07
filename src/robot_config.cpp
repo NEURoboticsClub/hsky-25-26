@@ -122,7 +122,7 @@ DrivebaseOdometry odom(&leftDriveMotors, &rightDriveMotors, robotConfig, &imu,
 
 TankDrive driveBase(leftDriveMotors, rightDriveMotors,
 					pros::E_MOTOR_BRAKE_COAST, pros::E_MOTOR_GEAR_600, 1.0,
-					1.0);
+					0.75);
 Transport lowerScoring(lowerScoringMotors, 1, pros::E_MOTOR_BRAKE_COAST,
 					   pros::E_MOTOR_GEAR_600);
 Transport upperScoring(upperScoringMotors, 1, pros::E_MOTOR_BRAKE_COAST,
@@ -206,150 +206,237 @@ void stopAll() {
 	intake.stop();
 }
 
-void constructAuton(bool isLeft, bool isRed) {
-	commandQueue.push(new InstantCommand([&]() {
-		imu.tare();
-	}));
-	
+void constructMatchAuton(bool isLeft, bool isRed) {
+	// Drive to loader
+	commandQueue.push(new InstantCommand([&]() { imu.tare(); }));
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, 40.0, 1500));
+	commandQueue.push(
+		new TurnToHeading(driveBase, odom, robotConfig, isLeft ? 90.0 : 270.0));
 
+	// Intake from loader
+	commandQueue.push(new InstantCommand([&]() { intakeLoader(); }));
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, 18, 1400));
+	commandQueue.push(new TimeoutCommand(2000));
+	commandQueue.push(new InstantCommand([&]() { stopAll(); }));
+
+	// Back up and turn to corner
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, -22, 1500));
+	// commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, isLeft
+	// ? 45.0 : 315.0));
+	commandQueue.push(
+		new TurnToHeading(driveBase, odom, robotConfig, isLeft ? 45.0 : 315.0));
+
+	// Spit out wrong color
+	commandQueue.push(new InstantCommand([&]() { scoreLower(); }));
+	commandQueue.push(new WaitUntilColorSensor(opticalSensor, isRed, 2000));
+	commandQueue.push(new InstantCommand([&]() { stopAll(); }));
+
+	// // Spit out again to avoid getting stuck
+	// commandQueue.push(new InstantCommand([&]() {
+	// 	intakeField();
+	// }));
+	// commandQueue.push(new TimeoutCommand(250));
+	// commandQueue.push(new InstantCommand([&]() {
+	// 	scoreLower();
+	// }));
+	// commandQueue.push(new WaitUntilColorSensor(opticalSensor, isRed,
+	// 1000));ePisto commandQueue.push(new InstantCommand([&]() { 	stopAll();
+	// }));
+
+	// Drive to goal
+	commandQueue.push(
+		new TurnToHeading(driveBase, odom, robotConfig, isLeft ? 90.0 : 270.0));
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, -18, 1500));
+
+	// Score
+	commandQueue.push(new InstantCommand([&]() { scoreLong(); }));
+	commandQueue.push(new TimeoutCommand(1000));
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, -7, 1000));
+	commandQueue.push(new TimeoutCommand(1000));
+	commandQueue.push(new InstantCommand([&]() { stopAll(); }));
+
+	// Drive to loader again
+
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, 18, 1500));
+	commandQueue.push(new InstantCommand([&]() { intakeLoader(); }));
+	commandQueue.push(new TimeoutCommand(100));
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, 16, 1500));
+
+	// Intake
+	// commandQueue.push(;
+	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig,
+										isLeft ? 90.0 : 270.0, 100));
+	commandQueue.push(new TimeoutCommand(2000));
+	commandQueue.push(new InstantCommand([&]() { stopAll(); }));
+
+	// Go to goal
+	commandQueue.push(
+		new TurnToHeading(driveBase, odom, robotConfig, isLeft ? 90.0 : 270.0));
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, -37, 1500));
+	commandQueue.push(new InstantCommand([&]() { lowerScoring.moveOut(); }));
+	commandQueue.push(new TimeoutCommand(200));
+	// Score
+	commandQueue.push(new InstantCommand([&]() { scoreLong(); }));
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, -7, 1000));
+	commandQueue.push(new TimeoutCommand(5000));
+
+	// Stop and flip hood
+	commandQueue.push(new InstantCommand([&]() {
+		hood.retractPiston();
+		stopAll();
+	}));
+	commandQueue.push(new TimeoutCommand(1000));
+	commandQueue.push(new InstantCommand([&]() {
+		hood.extendPiston();
+		stopAll();
+	}));
+	commandQueue.push(new TimeoutCommand(100000));
+}
+
+void constructSkillsAuton(bool isLeft, bool isRed) {
+	commandQueue.push(new InstantCommand([&]() { imu.tare(); }));
 
 	// Drive to loader
-	commandQueue.push(new InstantCommand([&]() {
-		imu.tare();
-	}));
-	commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, 40, 1500));
+	commandQueue.push(new InstantCommand([&]() { imu.tare(); }));
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, 40, 1500));
 	commandQueue.push(
 		new TurnToHeading(driveBase, odom, robotConfig, isLeft ? 90.0 : 270.0));
 
 	// Intake from loader
 	commandQueue.push(new InstantCommand([&]() { intakeLoader(); }));
 	commandQueue.push(new TimeoutCommand(100));
-	commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, 18, 1400));
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, 18, 1400));
 	commandQueue.push(new TimeoutCommand(1500));
-	// commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, -5, 1400));
-	// commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, 5, 1400));
-	// commandQueue.push(new TimeoutCommand(1500));
-	commandQueue.push(new InstantCommand([&]() {
-		stopAll();
-	}));
+	// commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, -5,
+	// 1400)); commandQueue.push(new DriveDistance(driveBase, odom, robotConfig,
+	// 5, 1400)); commandQueue.push(new TimeoutCommand(1500));
+	commandQueue.push(new InstantCommand([&]() { stopAll(); }));
 
 	// Drive to goal
 	commandQueue.push(
 		new TurnToHeading(driveBase, odom, robotConfig, isLeft ? 90.0 : 270.0));
-	commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, -40, 1500));
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, -40, 1500));
 
 	// Score
 	commandQueue.push(new InstantCommand([&]() { scoreLong(); }));
 	commandQueue.push(new TimeoutCommand(2500));
-	commandQueue.push(new InstantCommand([&]() { 
-		stopAll();
-	}));
+	commandQueue.push(new InstantCommand([&]() { stopAll(); }));
 	commandQueue.push(new TimeoutCommand(150));
 	commandQueue.push(new InstantCommand([&]() { scoreLong(); }));
 	// commandQueue.push(new TimeoutCommand(1500));
-	// commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, -7, 1000));
-	// commandQueue.push(new TimeoutCommand(1000));
+	// commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, -7,
+	// 1000)); commandQueue.push(new TimeoutCommand(1000));
 	commandQueue.push(new InstantCommand([&]() { stopAll(); }));
 
+	// Back up
 
-	// Back up 
-	
-	commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, 10, 1000));
-	commandQueue.push(new InstantCommand([&]() { 
-		scraper.retractPiston();
-	}));
-	commandQueue.push(new InstantCommand([&]() { 
-		scoreLong();
-	}));
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, 10, 1000));
+	commandQueue.push(new InstantCommand([&]() { scraper.retractPiston(); }));
+	commandQueue.push(new InstantCommand([&]() { scoreLong(); }));
 	// Drive towards center
 	commandQueue.push(
 		new TurnToHeading(driveBase, odom, robotConfig, isLeft ? 0.0 : 180.0));
-	commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, 18, 1500));
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, 18, 1500));
 
 	commandQueue.push(
 		new TurnToHeading(driveBase, odom, robotConfig, isLeft ? 90.0 : 270.0));
 
-	commandQueue.push(new InstantCommand([&]() { 
-		stopAll();
-	}));
-	commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, -84, 3500));
+	commandQueue.push(new InstantCommand([&]() { stopAll(); }));
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, -84, 3500));
 	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 0.0));
-	// commandQueue.push(new InstantCommand([&]() { 
+	// commandQueue.push(new InstantCommand([&]() {
 	// 	scraper.retractPiston();
 	// }));
-	
-	commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, 53, 1500));
-	commandQueue.push(new InstantCommand([&]() { 
-		intakeField();
-	}));
+
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, 53, 1500));
+	commandQueue.push(new InstantCommand([&]() { intakeField(); }));
 	commandQueue.push(new TimeoutCommand(100));
 	commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, -5, 500));
 	commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, 5, 500));
 	commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, -5, 500));
 	commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, 5, 1000));
 	commandQueue.push(new TimeoutCommand(500));
-	commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, -15, 1500));
-	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, isLeft ? 270.0 : 90.0));
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, -15, 1500));
+	commandQueue.push(
+		new TurnToHeading(driveBase, odom, robotConfig, isLeft ? 270.0 : 90.0));
 	commandQueue.push(new TimeoutCommand(1000));
-	
+
 	intakeField();
-	commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, -24, 1400));
-	commandQueue.push(new InstantCommand([&]() { 
-		scoreLong();
-	}));
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, -24, 1400));
+	commandQueue.push(new InstantCommand([&]() { scoreLong(); }));
 	commandQueue.push(new TimeoutCommand(1000));
 
-
-	commandQueue.push(new InstantCommand([&]() { 
-		intakeLoader();
-	}));
+	commandQueue.push(new InstantCommand([&]() { intakeLoader(); }));
 	commandQueue.push(new TimeoutCommand(1000));
-	commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, 40, 1500));
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, 40, 1500));
 	commandQueue.push(new TimeoutCommand(1500));
-	commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, -5, 1400));
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, -5, 1400));
 	commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, 6, 1400));
 	commandQueue.push(new TimeoutCommand(500));
 
 	// Drive to goal
 
-	commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, -44, 1500));
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, -44, 1500));
 	// Score
 	commandQueue.push(new InstantCommand([&]() { scoreLong(); }));
 	commandQueue.push(new TimeoutCommand(2500));
-	commandQueue.push(new InstantCommand([&]() { 
-		stopAll();
-	}));
+	commandQueue.push(new InstantCommand([&]() { stopAll(); }));
 	commandQueue.push(new TimeoutCommand(150));
 	commandQueue.push(new InstantCommand([&]() { scoreLong(); }));
 	commandQueue.push(new TimeoutCommand(500));
-	commandQueue.push(new InstantCommand([&]() { 
-		stopAll();
-	}));
+	commandQueue.push(new InstantCommand([&]() { stopAll(); }));
 
-	commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, 18, 1000));
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, 18, 1000));
 	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 0.0));
-	commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, -24, 2000));
-	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, isLeft ? 270.0 : 90.0));
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, -24, 2000));
+	commandQueue.push(
+		new TurnToHeading(driveBase, odom, robotConfig, isLeft ? 270.0 : 90.0));
 	commandQueue.push(new TimeoutCommand(1000));
-	commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, -120, 4500));
-	commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, -10, 500));
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, -120, 4500));
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, -10, 500));
 
-	commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, 1, 1000)); 
+	commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, 1, 1000));
 	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 0.0));
-	commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, -24, 2000));
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, -24, 2000));
 	// // Drive to loader again
-	
-	// commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, 18, 1500));
-	// commandQueue.push(new InstantCommand([&]() {
-	// 	intakeLoader();
+
+	// commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, 18,
+	// 1500)); commandQueue.push(new InstantCommand([&]() { 	intakeLoader();
 	// }));
 	// commandQueue.push(new TimeoutCommand(100));
-	// commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, 16, 1500));
+	// commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, 16,
+	// 1500));
 
 	// // Intake
 	// // commandQueue.push(;
-	// commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, isLeft ? 90.0 : 270.0, 100));
-	// commandQueue.push(new TimeoutCommand(2000));
+	// commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, isLeft
+	// ? 90.0 : 270.0, 100)); commandQueue.push(new TimeoutCommand(2000));
 	// commandQueue.push(new InstantCommand([&]() {
 	// 	stopAll();
 	// }));
@@ -357,8 +444,8 @@ void constructAuton(bool isLeft, bool isRed) {
 	// // Go to goal
 	// commandQueue.push(
 	// 	new TurnToHeading(driveBase, odom, robotConfig, isLeft ? 90.0 : 270.0));
-	// commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, -37, 1500));
-	// commandQueue.push(new InstantCommand([&]() {
+	// commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, -37,
+	// 1500)); commandQueue.push(new InstantCommand([&]() {
 	// 	lowerScoring.moveOut();
 	// }));
 	// commandQueue.push(new TimeoutCommand(200));
@@ -366,8 +453,8 @@ void constructAuton(bool isLeft, bool isRed) {
 	// commandQueue.push(new InstantCommand([&]() {
 	// 	scoreLong();
 	// }));
-	// commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, -7, 1000));
-	// commandQueue.push(new TimeoutCommand(5000));
+	// commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, -7,
+	// 1000)); commandQueue.push(new TimeoutCommand(5000));
 
 	// // Stop and flip hood
 	// commandQueue.push(new InstantCommand([&]() {
@@ -380,22 +467,19 @@ void constructAuton(bool isLeft, bool isRed) {
 	// 	stopAll();
 	// }));
 	// commandQueue.push(new TimeoutCommand(100000));
-	
 }
 
-
-// void constructAuton(bool isLeft, bool isRed) {
-// 	// commandQueue.push(
-// 	// 	new DriveDistance(driveBase, odom, robotConfig, robotConfig, robotConfig, 20.0,
-// 1500)); 	commandQueue.push(new InstantCommand([&]() { imu.tare(); }));
-// 	commandQueue.push(new TimeoutCommand(100));
-// 	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, robotConfig,
-// robotConfig, 180.0)); 	commandQueue.push(new TimeoutCommand(5000));
-// 	// commandQueue.push(
-// 	// 	new DriveDistance(driveBase, odom, robotConfig, robotConfig, robotConfig, 20.0,
-// 1500)); 	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, robotConfig,
-// robotConfig, 0.0));
-// }
+void constructTuningAuton(bool isLeft, bool isRed) {
+	// commandQueue.push(
+	// 	new DriveDistance(driveBase, odom, robotConfig, 20.0, 1500));
+	commandQueue.push(new InstantCommand([&]() { imu.tare(); }));
+	commandQueue.push(new TimeoutCommand(100));
+	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 90.0));
+	commandQueue.push(new TimeoutCommand(5000));
+	// commandQueue.push(
+	// 	new DriveDistance(driveBase, odom, robotConfig, 20.0, 1500));
+	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 180.0));
+}
 
 #ifdef ROBOT_1
 bool scraperToggle = false;
@@ -445,6 +529,8 @@ void opcontrolInit() {
 			wing.retractPiston();
 		}
 	});
+
+	stopAll();
 }
 
 #elifdef ROBOT_2
@@ -487,11 +573,13 @@ void opcontrolInit() {
 			wing.retractPiston();
 		}
 	});
+
+	stopAll();
 }
 
 #endif
 
 void robotInit() {
 	deviceInit();
-	constructAuton(isLeft, isRed);
+	constructTuningAuton(isLeft, isRed);
 }
