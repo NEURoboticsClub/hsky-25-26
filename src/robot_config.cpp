@@ -31,7 +31,7 @@ PIDController drivePid(7.0, 0.0, 0, PIDController::ERROR_TYPE::LINEAR);
 // PIDController turnPid(53.0, 0.67, 115.0, PIDController::ERROR_TYPE::ANGULAR);
 // PIDController turnPid(130.0, 10, 90.0, PIDController::ERROR_TYPE::ANGULAR);
 // PIDController turnPid(70.0, 0.0, 0.0, PIDController::ERROR_TYPE::ANGULAR);
-PIDController turnPid(80.0, 2.0, 750.0, PIDController::ERROR_TYPE::ANGULAR);
+PIDController turnPid(81.25, 0, 0, PIDController::ERROR_TYPE::ANGULAR);
 PIDController headingPid(0.0, 0, 0.0, PIDController::ERROR_TYPE::ANGULAR);
 
 robot_specs_t robotConfig{.driveWheelDiameter = 2.75,
@@ -597,8 +597,8 @@ void opcontrolInit() {
 
 void robotInit() {
 	deviceInit();
-	constructMatchAuton(false, true);
+	//constructMatchAuton(false, true);
 	// constructMatchAuton(true, true);
 	// constructSkillsAuton(false, false);
-	// constructTuningAuton(true, true);
+	constructTuningAuton(true, false);
 }
