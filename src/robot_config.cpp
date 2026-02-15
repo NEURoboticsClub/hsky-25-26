@@ -176,7 +176,6 @@ void scoreUpper() {
 }
 
 void scoreLower() {
-	scraper.retractPiston();
 	upperScoring.moveOut();
 	lowerScoring.moveOut(0);
 	intake.moveOut(60);
@@ -313,10 +312,22 @@ void constructMatchAuton(bool isLeft, bool isRed) {
 	commandQueue.push(new TimeoutCommand(100000));
 }
 
+void queueWiggleIntake(double distance = 5.0, int times = 2) {
+	for (int i = 0; i < times; i++) {
+		commandQueue.push(
+			new DriveDistance(driveBase, odom, robotConfig, -distance, 500));
+		commandQueue.push(
+			new DriveDistance(driveBase, odom, robotConfig, distance, 500));
+	}
+}
+
 void queueLoaderCycle(int deadReckonTime, uint8_t speectPct = 100) {
 	commandQueue.push(new InstantCommand([&]() { intakeLoader(); }));
 	commandQueue.push(
-		new DriveDeadReckon(driveBase, speectPct, speectPct, deadReckonTime ));
+		new DriveDeadReckon(driveBase, speectPct, speectPct, deadReckonTime/2.0));
+	// queueWiggleIntake(0.5,1);
+	commandQueue.push(
+		new DriveDeadReckon(driveBase, speectPct, speectPct, deadReckonTime/2));
 	commandQueue.push(new InstantCommand([&]() { stopAll(); }));
 }
 
@@ -326,25 +337,18 @@ commandQueue.push(
 
 	std::queue<Command *> scoreQueue;
 
-	scoreQueue.push(new TimeoutCommand(150));
+	scoreQueue.push(new TimeoutCommand(250));
 	scoreQueue.push(new InstantCommand([&]() { scoreLong(); }));
 	// scoreQueue.push(new TimeoutCommand(2200));
 
 
 	commandQueue.push(new ParallelCommandGroup({
-		new DriveDeadReckon(driveBase, -100, -100, 2700),
+		new DriveDeadReckon(driveBase, -100, -100, 2800),
 			new SequentialCommandGroup(scoreQueue)
 	}));
 }
 
-void queueWiggleIntake(double distance = 5.0, int times = 2) {
-	for (int i = 0; i < times; i++) {
-		commandQueue.push(
-			new DriveDistance(driveBase, odom, robotConfig, -distance, 500));
-		commandQueue.push(
-			new DriveDistance(driveBase, odom, robotConfig, distance, 500));
-	}
-}
+
 
 void constructSkillsAuton(bool isLeft, bool isRed) {
 	// const int LOADER_DEAD_RECKON_TIME = 2800;
@@ -392,11 +396,11 @@ void constructSkillsAuton(bool isLeft, bool isRed) {
 	commandQueue.push(new InstantCommand([&]() { intakeField(); }));
 	commandQueue.push(new TimeoutCommand(100));
 	queueWiggleIntake(5.0, 2);
-	commandQueue.push(new TimeoutCommand(500));
+	// commandQueue.push(new TimeoutCommand(500));
 
 	// Retreat and turn to side goal
 	commandQueue.push(
-		new DriveDistance(driveBase, odom, robotConfig, -15, 1500));
+		new DriveDistance(driveBase, odom, robotConfig, -15.5, 1500));
 	commandQueue.push(
 		new TurnToHeading(driveBase, odom, robotConfig, isLeft ? 270.0 : 90.0));
 	commandQueue.push(new TimeoutCommand(1000));
@@ -445,7 +449,7 @@ void constructSkillsAuton(bool isLeft, bool isRed) {
 	commandQueue.push(
 		new TurnToHeading(driveBase, odom, robotConfig, 180));	
 	commandQueue.push(
-		new DriveDistance(driveBase, odom, robotConfig, -24, 5000));
+		new DriveDistance(driveBase, odom, robotConfig, -24, 1500));
 	commandQueue.push(
 		new TurnToHeading(driveBase, odom, robotConfig, 90, 1000));
 	commandQueue.push(
