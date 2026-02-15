@@ -33,12 +33,13 @@ PIDController drivePid(7.0, 0.0, 0, PIDController::ERROR_TYPE::LINEAR);
 // PIDController turnPid(130.0, 10, 90.0, PIDController::ERROR_TYPE::ANGULAR);
 // PIDController turnPid(70.0, 0.0, 0.0, PIDController::ERROR_TYPE::ANGULAR);
 PIDController turnPid(42, 0, 19, PIDController::ERROR_TYPE::ANGULAR);
-PIDController headingPid(100.0, 0, 0.0, PIDController::ERROR_TYPE::ANGULAR);
+PIDController headingPid(50.0, 0, 0.0, PIDController::ERROR_TYPE::ANGULAR);
 
 robot_specs_t robotConfig{.driveWheelDiameter = 2.75,
 						  .trackWidth = 11.0,
 						  .odomPodDiameter = 0.0,
-						  .maxDrivePct = 33,
+						//   .maxDrivePct = 33,
+						.maxDrivePct = 45,
 						  .maxTurnPct = 100,
 						  .drivePID = &drivePid,
 						  .headingPID = &headingPid,
@@ -331,7 +332,7 @@ commandQueue.push(
 
 
 	commandQueue.push(new ParallelCommandGroup({
-		new DriveDeadReckon(driveBase, -60, -60, 3700),
+		new DriveDeadReckon(driveBase, -100, -100, 2700),
 			new SequentialCommandGroup(scoreQueue)
 	}));
 }
@@ -387,7 +388,7 @@ void constructSkillsAuton(bool isLeft, bool isRed) {
 	commandQueue.push(
 		new DriveDistance(driveBase, odom, robotConfig, 67, 1500));
 	commandQueue.push(
-		new DriveDeadReckon(driveBase, 50, 50, 300));
+		new DriveDeadReckon(driveBase, 100, 100, 300));
 	commandQueue.push(new InstantCommand([&]() { intakeField(); }));
 	commandQueue.push(new TimeoutCommand(100));
 	queueWiggleIntake(5.0, 2);
@@ -438,11 +439,15 @@ void constructSkillsAuton(bool isLeft, bool isRed) {
 	commandQueue.push(new TimeoutCommand(500));
 	commandQueue.push(
 		new DriveDistance(driveBase, odom, robotConfig, -10, 1400));
-
+	commandQueue.push(new InstantCommand([&]() { wing.retractPiston(); }));
 
 	// Park ?
 	commandQueue.push(
 		new TurnToHeading(driveBase, odom, robotConfig, 180));	
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, -24, 5000));
+	commandQueue.push(
+		new TurnToHeading(driveBase, odom, robotConfig, 90, 1000));
 	commandQueue.push(
 		new DriveDistance(driveBase, odom, robotConfig, -108, 5000));
 	commandQueue.push(
@@ -451,7 +456,8 @@ void constructSkillsAuton(bool isLeft, bool isRed) {
 	// commandQueue.push(
 	// 	new DriveDistance(driveBase, odom, robotConfig, -108, 5000));
 	commandQueue.push(
-		new TurnToHeading(driveBase, odom, robotConfig, 0));	
+		new TurnToHeading(driveBase, odom, robotConfig, 10, 1000));	
+		
 	
 	commandQueue.push(
 		new DriveDistance(driveBase, odom, robotConfig, -24, 5000));
