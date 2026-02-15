@@ -15,7 +15,7 @@ std::queue<Command *> commandQueue;
 // ---------------------------------------------------------
 // ##################### Configuration #####################
 // ---------------------------------------------------------
-#define ROBOT_1
+#define ROBOT_2
 #define BLUE
 
 //---------------------------------------------------
@@ -86,22 +86,22 @@ Pneumatics wing(wingCylinder);
 //---------------------------------------------------
 
 #elifdef ROBOT_2
-bool isLeft = true;	 // TODO: Should be true
+bool isLeft = true;
 
 //===================== CONFIG =====================
 
-PIDController drivePid(7.0, 0.0, 0, PIDController::ERROR_TYPE::LINEAR);
+PIDController drivePid(5.0, 0.0, 0, PIDController::ERROR_TYPE::LINEAR);
 // PIDController drivePid(0.15, 0.0, 0.05, PIDController::ERROR_TYPE::LINEAR);
 // PIDController turnPid(80.0, 0.0 , 0.0, PIDController::ERROR_TYPE::ANGULAR);
-PIDController turnPid(42, 0, 19, PIDController::ERROR_TYPE::ANGULAR);
-PIDController headingPid(0.0, 0, 0.0, PIDController::ERROR_TYPE::ANGULAR);
+PIDController turnPid(180, 0, 20, PIDController::ERROR_TYPE::ANGULAR);
+PIDController headingPid(100.0, 0.0, 0.0, PIDController::ERROR_TYPE::ANGULAR);
 // PIDController headingPid(60.0, 0.0, 0.0, PIDController::ERROR_TYPE::ANGULAR);
 
 robot_specs_t robotConfig{.driveWheelDiameter = 2.75,
 						  .trackWidth = 11.0,
 						  .odomPodDiameter = 0.0,
-						  .maxDrivePct = 30,
-						  .maxTurnPct = 80,
+						  .maxDrivePct = 33,
+						  .maxTurnPct = 40,
 						  .drivePID = &drivePid,
 						  .headingPID = &headingPid,
 						  .turnPID = &turnPid};
@@ -313,30 +313,6 @@ void constructMatchAuton(bool isLeft, bool isRed) {
 	commandQueue.push(new TimeoutCommand(100000));
 }
 
-void queueLoaderCycle(int deadReckonTime, uint8_t speectPct = 100) {
-	commandQueue.push(new InstantCommand([&]() { intakeLoader(); }));
-	commandQueue.push(
-		new DriveDeadReckon(driveBase, speectPct, speectPct, deadReckonTime ));
-	commandQueue.push(new InstantCommand([&]() { stopAll(); }));
-}
-
-void queueScoreLong() {
-commandQueue.push(
-		new DriveDistance(driveBase, odom, robotConfig, -37, 1500));
-
-	std::queue<Command *> scoreQueue;
-
-	scoreQueue.push(new TimeoutCommand(150));
-	scoreQueue.push(new InstantCommand([&]() { scoreLong(); }));
-	// scoreQueue.push(new TimeoutCommand(2200));
-
-
-	commandQueue.push(new ParallelCommandGroup({
-		new DriveDeadReckon(driveBase, -100, -100, 2700),
-			new SequentialCommandGroup(scoreQueue)
-	}));
-}
-
 void queueWiggleIntake(double distance = 5.0, int times = 2) {
 	for (int i = 0; i < times; i++) {
 		commandQueue.push(
@@ -344,6 +320,29 @@ void queueWiggleIntake(double distance = 5.0, int times = 2) {
 		commandQueue.push(
 			new DriveDistance(driveBase, odom, robotConfig, distance, 500));
 	}
+}
+
+void queueLoaderCycle(int deadReckonTime, uint8_t speectPct = 100) {
+	commandQueue.push(new InstantCommand([&]() { intakeLoader(); }));
+	commandQueue.push(
+		new DriveDeadReckon(driveBase, speectPct, speectPct, deadReckonTime/2 ));
+	queueWiggleIntake(1.0, 2);
+	commandQueue.push(
+		new DriveDeadReckon(driveBase, speectPct, speectPct, deadReckonTime/2 ));
+	commandQueue.push(new InstantCommand([&]() { stopAll(); }));
+}
+
+void queueScoreLong() {
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, -37, 1500));
+
+	commandQueue.push(
+		new DriveDeadReckon(driveBase, -100, -100, 500)
+	);
+	commandQueue.push(new InstantCommand([&]() { scoreLong(); }));
+	commandQueue.push(
+		new DriveDeadReckon(driveBase, -100, -100, 2200)
+	);
 }
 
 void constructSkillsAuton(bool isLeft, bool isRed) {
@@ -461,8 +460,108 @@ void constructSkillsAuton(bool isLeft, bool isRed) {
 	
 	commandQueue.push(
 		new DriveDistance(driveBase, odom, robotConfig, -24, 5000));
+}
+
+void constructRedSkillsAuton() {
+	const int LOADER_DEAD_RECKON_TIME = 3100;
+	const int LOADER_DEAD_RECKON_SPEED = 40;
+	const int SCORE_LONG_TIME = 1500;
+
+	commandQueue.push(new InstantCommand([&]() { imu.tare(); }));
 	
+	// Clear park zone
+	commandQueue.push(new InstantCommand([&]() { wing.extendPiston(); }));
+	commandQueue.push(new TimeoutCommand(500));
+	commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, -8.0, 1500));
+	commandQueue.push(new InstantCommand([&]() { wing.retractPiston(); }));
+	commandQueue.push(new TimeoutCommand(500));
+
+	// Drive to loader
+	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 90.0));
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, -47, 3000));
+	commandQueue.push(
+		new TurnToHeading(driveBase, odom, robotConfig, 0.0));
+
+	// Intake from loader
+	queueLoaderCycle(LOADER_DEAD_RECKON_TIME + 500, LOADER_DEAD_RECKON_SPEED); // Longer drive
+	queueScoreLong();
+
+	// Back up
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, 10, 1000));
+	commandQueue.push(new InstantCommand([&]() { scraper.retractPiston();
+	})); 
+	commandQueue.push(new InstantCommand([&]() { scoreLong(); }));
 	
+	// Drive towards center
+	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 90.0)); 
+	commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, 18, 1500)); 
+	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 0.0));
+
+	// Cross field to opposite side
+	commandQueue.push(new InstantCommand([&]() { stopAll(); }));
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, -88, 4500));
+	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 270.0));
+
+	// Collect field ball with jiggle motion
+	commandQueue.push(new InstantCommand([&]() { intakeField(); }));
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, 67, 1500));
+	commandQueue.push(
+		new DriveDeadReckon(driveBase, 50, 50, 300));
+	commandQueue.push(new InstantCommand([&]() { intakeField(); }));
+	commandQueue.push(new TimeoutCommand(100));
+	queueWiggleIntake(5.0, 2);
+	commandQueue.push(new TimeoutCommand(500));
+
+	// Retreat and turn to side goal
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, -15, 1500));
+	commandQueue.push(
+		new TurnToHeading(driveBase, odom, robotConfig, 180.0));
+	commandQueue.push(new TimeoutCommand(1000));
+
+	// Score field balls
+	intakeField();
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, -24, 1400));
+	commandQueue.push(new InstantCommand([&]() { scoreLong(); }));
+	commandQueue.push(new TimeoutCommand(1000));
+
+	commandQueue.push(new InstantCommand([&]() { intakeLoader(); }));
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, 32, 1400));
+	// Intake from loader
+	
+	queueLoaderCycle(LOADER_DEAD_RECKON_TIME, LOADER_DEAD_RECKON_SPEED);
+	commandQueue.push(new TimeoutCommand(100));
+	queueScoreLong();
+	commandQueue.push(new InstantCommand([&]() { 
+		stopAll();
+		scraper.retractPiston();
+	 }));
+
+	commandQueue.push(new TimeoutCommand(100));
+
+	// Drive to Center
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, 10, 1400));
+	commandQueue.push(
+		new TurnToHeading(driveBase, odom, robotConfig, 90));
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, 24, 3000));
+	commandQueue.push(
+		new TurnToHeading(driveBase, odom, robotConfig, 0));
+	
+	// Park
+	commandQueue.push(
+		new DriveDeadReckon(driveBase, 40, 40, 4500));
+	commandQueue.push(
+		new TurnToHeading(driveBase, odom, robotConfig, 260));
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, -30, 2500, 50));
 }
 
 void constructTuningAuton(bool isLeft, bool isRed) {
@@ -485,17 +584,17 @@ void constructTuningAuton(bool isLeft, bool isRed) {
 
 	// commandQueue.push(new InstantCommand([&]() { imu.tare(); }));
 	// commandQueue.push(new TimeoutCommand(100));
-	// commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, 10.0,
-	// 99999)); commandQueue.push(new TimeoutCommand(1000));
-	// commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, -10.0,
-	// 99999)); commandQueue.push(new TurnToHeading())
+	// commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, 10.0, 99999));
+	// commandQueue.push(new TimeoutCommand(1000));
+	// commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, -10.0, 99999));
+	// commandQueue.push(new TurnToHeading())
 	// for (int i = 0; i < 4; i++) {
-	// 	commandQueue.push(
-	// 		new TurnToHeading(driveBase, odom, robotConfig, 90, 99999, 10));
-	// 	commandQueue.push(new TimeoutCommand(500));
-	// 	commandQueue.push(
-	// 		new TurnToHeading(driveBase, odom, robotConfig, 0, 99999, 10));
-	// 	commandQueue.push(new TimeoutCommand(500));
+		// commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 90, 20000));
+		commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, 88.0, 99999));
+		commandQueue.push(new TimeoutCommand(1000));
+		// commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 0, 20000));
+		commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, -88.0, 99999));
+		commandQueue.push(new TimeoutCommand(1000));
 	// }
 	// commandQueue.push(
 	// 	new DriveDistance(driveBase, odom, robotConfig, 20.0, 1500));
@@ -601,9 +700,8 @@ void opcontrolInit() {
 
 void robotInit() {
 	deviceInit();
-	// constructMatchAuton(false, true);
-	//  constructMatchAuton(true, true);
-	constructSkillsAuton(false, false);
-	// constructTuningAuton(false, false);
-	// constructTuningAuton(true, false);
+	//constructMatchAuton(false, true);
+	// constructMatchAuton(true, true);
+	// constructSkillsAuton(false, false);
+	constructRedSkillsAuton();
 }
