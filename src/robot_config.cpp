@@ -325,13 +325,13 @@ commandQueue.push(
 
 	std::queue<Command *> scoreQueue;
 
-	scoreQueue.push(new TimeoutCommand(300));
+	scoreQueue.push(new TimeoutCommand(150));
 	scoreQueue.push(new InstantCommand([&]() { scoreLong(); }));
 	// scoreQueue.push(new TimeoutCommand(2200));
 
 
 	commandQueue.push(new ParallelCommandGroup({
-		new DriveDeadReckon(driveBase, -30, -30, 3500),
+		new DriveDeadReckon(driveBase, -60, -60, 3700),
 			new SequentialCommandGroup(scoreQueue)
 	}));
 }
@@ -429,14 +429,33 @@ void constructSkillsAuton(bool isLeft, bool isRed) {
 	commandQueue.push(
 		new TurnToHeading(driveBase, odom, robotConfig, 0));
 	commandQueue.push(
-		new DriveDistance(driveBase, odom, robotConfig, -72, 1400));
+		new DriveDistance(driveBase, odom, robotConfig, -46, 3000));
 	commandQueue.push(
 		new TurnToHeading(driveBase, odom, robotConfig, 90));
 	commandQueue.push(
 		new DriveDistance(driveBase, odom, robotConfig, 12, 1400));
 	commandQueue.push(new InstantCommand([&]() { wing.extendPiston(); }));
+	commandQueue.push(new TimeoutCommand(500));
 	commandQueue.push(
 		new DriveDistance(driveBase, odom, robotConfig, -10, 1400));
+
+
+	// Park ?
+	commandQueue.push(
+		new TurnToHeading(driveBase, odom, robotConfig, 180));	
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, -108, 5000));
+	commandQueue.push(
+		new DriveDeadReckon(driveBase, -50, -50, 300));
+
+	// commandQueue.push(
+	// 	new DriveDistance(driveBase, odom, robotConfig, -108, 5000));
+	commandQueue.push(
+		new TurnToHeading(driveBase, odom, robotConfig, 0));	
+	
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, -24, 5000));
+	
 	
 }
 
