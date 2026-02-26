@@ -16,6 +16,7 @@ std::queue<Command *> commandQueue;
 // ##################### Configuration #####################
 // ---------------------------------------------------------
 #define RED_ROBOT
+#define MATCH
 #define BLUE
 
 //---------------------------------------------------
@@ -150,6 +151,13 @@ bool isRedTeam = true;
 bool isRedTeam = false;
 #endif
 
+// Set skils or match
+#ifdef MATCH
+bool isMatch = true;
+#else
+bool isMatch = false;
+#endif
+
 //====================== UTILS ======================
 
 void deviceInit() {
@@ -258,7 +266,7 @@ void constructRedMatchAuton(bool isRed) {
 
 	// Drive to goal
 	commandQueue.push(
-		new TurnToHeading(driveBase, odom, robotConfig, isLeft ? 90.0 : 270.0));
+		new TurnToHeading(driveBase, odom, robotConfig, 90.0));
 	commandQueue.push(
 		new DriveDistance(driveBase, odom, robotConfig, -18, 1500, 25));
 
@@ -283,13 +291,13 @@ void constructRedMatchAuton(bool isRed) {
 	// Intake
 	// commandQueue.push(;
 	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig,
-										isLeft ? 90.0 : 270.0, 100));
+										90.0, 100));
 	commandQueue.push(new TimeoutCommand(2000));
 	commandQueue.push(new InstantCommand([&]() { stopAll(); }));
 
 	// Go to goal
 	commandQueue.push(
-		new TurnToHeading(driveBase, odom, robotConfig, isLeft ? 90.0 : 270.0));
+		new TurnToHeading(driveBase, odom, robotConfig, 90.0));
 	commandQueue.push(
 		new DriveDistance(driveBase, odom, robotConfig, -37, 1500, 25));
 	commandQueue.push(new InstantCommand([&]() { lowerScoring.moveOut(); }));
@@ -459,7 +467,7 @@ void constructPurpleSkillsAuton() {
 	commandQueue.push(
 		new DriveDistance(driveBase, odom, robotConfig, 30.5, 1500));
 	commandQueue.push(
-		new TurnToHeading(driveBase, odom, robotConfig, isLeft ? 90.0 : 270.0));
+		new TurnToHeading(driveBase, odom, robotConfig, 270.0));
 
 	// Intake from loader
 	queueLoaderCycle(LOADER_DEAD_RECKON_TIME, LOADER_DEAD_RECKON_SPEED);
@@ -476,7 +484,7 @@ void constructPurpleSkillsAuton() {
 	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig,
 	180.0)); commandQueue.push( 	new DriveDistance(driveBase, odom,
 	robotConfig, 18, 1500)); commandQueue.push( 	new TurnToHeading(driveBase,
-	odom, robotConfig, isLeft ? 90.0 : 270.0));
+	odom, robotConfig, 270.0));
 
 	// Cross field to opposite side
 	commandQueue.push(new InstantCommand([&]() { stopAll(); }));
@@ -499,7 +507,7 @@ void constructPurpleSkillsAuton() {
 	commandQueue.push(
 		new DriveDistance(driveBase, odom, robotConfig, -15, 1500));
 	commandQueue.push(
-		new TurnToHeading(driveBase, odom, robotConfig, isLeft ? 270.0 : 90.0));
+		new TurnToHeading(driveBase, odom, robotConfig, 90.0));
 	commandQueue.push(new TimeoutCommand(1000));
 
 	// Score field balls
@@ -666,7 +674,7 @@ void constructRedSkillsAuton() {
 		new DriveDistance(driveBase, odom, robotConfig, -30, 2500, 50));
 }
 
-void constructTuningAuton(bool isLeft, bool isRed) {
+void constructTuningAuton() {
 	commandQueue.push(new InstantCommand([&]() { imu.tare(); }));
 	queueScoreLong();
 	commandQueue.push(new TimeoutCommand(3000));
@@ -702,7 +710,7 @@ void constructTuningAuton(bool isLeft, bool isRed) {
 	// 	new DriveDistance(driveBase, odom, robotConfig, 20.0, 1500));
 }
 
-#ifdef ROBOT_1
+#ifdef PURPLE_ROBOT
 bool scraperToggle = false;
 bool wingToggle = false;
 
@@ -754,7 +762,7 @@ void opcontrolInit() {
 	stopAll();
 }
 
-#elifdef ROBOT_2
+#elifdef RED_ROBOT
 bool wingToggle = false;
 
 void opcontrolInit() {
@@ -802,5 +810,18 @@ void opcontrolInit() {
 
 void robotInit() {
 	deviceInit();
-	constructRedMatchAuton(isRedTeam);
+
+	if (isMatch) {
+		if (isPurpleRobot) {
+			constructPurpleMatchAuton(isRedTeam);
+		} else {
+			constructRedMatchAuton(isRedTeam);
+		}
+	} else {
+		if (isPurpleRobot) {
+			constructPurpleSkillsAuton();
+		} else {
+			constructRedSkillsAuton();
+		}
+	}
 }
