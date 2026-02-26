@@ -15,15 +15,15 @@ std::queue<Command *> commandQueue;
 // ---------------------------------------------------------
 // ##################### Configuration #####################
 // ---------------------------------------------------------
-#define ROBOT_2
+#define RED_ROBOT
 #define BLUE
 
 //---------------------------------------------------
 // ##################### Robot 1 #####################
 //---------------------------------------------------
 
-#ifdef ROBOT_1
-bool isLeft = false;
+#ifdef PURPLE_ROBOT
+bool isPurpleRobot = true;
 
 // //===================== CONFIG =====================
 
@@ -85,8 +85,8 @@ Pneumatics wing(wingCylinder);
 // ##################### Robot 2 #####################
 //---------------------------------------------------
 
-#elifdef ROBOT_2
-bool isLeft = true;
+#elifdef RED_ROBOT
+bool isPurpleRobot = false;
 
 //===================== CONFIG =====================
 
@@ -145,9 +145,9 @@ pros::Optical opticalSensor(15);
 
 // Set red or blue
 #ifdef RED
-bool isRed = true;
+bool isRedTeam = true;
 #else
-bool isRed = false;
+bool isRedTeam = false;
 #endif
 
 //====================== UTILS ======================
@@ -211,13 +211,13 @@ void stopAll() {
 	intake.stop();
 }
 
-void constructMatchAuton(bool isLeft, bool isRed) {
+void constructRedMatchAuton(bool isRed) {
 	// Drive to loader
 	commandQueue.push(new InstantCommand([&]() { imu.tare(); }));
 	commandQueue.push(
 		new DriveDistance(driveBase, odom, robotConfig, 37.0, 1500));
 	commandQueue.push(
-		new TurnToHeading(driveBase, odom, robotConfig, isLeft ? 90.0 : 270.0));
+		new TurnToHeading(driveBase, odom, robotConfig, 90.0));
 
 	// Intake from loader
 	commandQueue.push(new InstantCommand([&]() { intakeLoader(); }));
@@ -237,7 +237,7 @@ void constructMatchAuton(bool isLeft, bool isRed) {
 	// commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, isLeft
 	// ? 45.0 : 315.0));
 	commandQueue.push(
-		new TurnToHeading(driveBase, odom, robotConfig, isLeft ? 45.0 : 315.0));
+		new TurnToHeading(driveBase, odom, robotConfig, 45.0));
 
 	// Spit out wrong color
 	commandQueue.push(new InstantCommand([&]() { scoreLower(); }));
@@ -290,6 +290,108 @@ void constructMatchAuton(bool isLeft, bool isRed) {
 	// Go to goal
 	commandQueue.push(
 		new TurnToHeading(driveBase, odom, robotConfig, isLeft ? 90.0 : 270.0));
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, -37, 1500, 25));
+	commandQueue.push(new InstantCommand([&]() { lowerScoring.moveOut(); }));
+	commandQueue.push(new TimeoutCommand(200));
+	// Score
+	commandQueue.push(new InstantCommand([&]() { scoreLong(); }));
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, -7, 2000, 25));
+	commandQueue.push(new TimeoutCommand(5000));
+
+	// Stop and flip hood
+	commandQueue.push(new InstantCommand([&]() {
+		hood.retractPiston();
+		stopAll();
+	}));
+	commandQueue.push(new TimeoutCommand(1000));
+	commandQueue.push(new InstantCommand([&]() {
+		hood.extendPiston();
+		stopAll();
+	}));
+	commandQueue.push(new TimeoutCommand(100000));
+}
+
+void constructPurpleMatchAuton(bool isRed) {
+	// Drive to loader
+	commandQueue.push(new InstantCommand([&]() { imu.tare(); }));
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, 37.0, 1500));
+	commandQueue.push(
+		new TurnToHeading(driveBase, odom, robotConfig, 270.0));
+
+	// Intake from loader
+	commandQueue.push(new InstantCommand([&]() { intakeLoader(); }));
+	// commandQueue.push(
+	// 	new DriveDistance(driveBase, odom, robotConfig, 18, 1400));
+
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, 40, 2000, 100));
+	// commandQueue.push(
+	// new DriveDeadReckon(driveBase, 100, 100, 1000, 100));
+	commandQueue.push(new TimeoutCommand(2000));
+	commandQueue.push(new InstantCommand([&]() { stopAll(); }));
+
+	// Back up and turn to corner
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, -22, 1500));
+	// commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, isLeft
+	// ? 45.0 : 315.0));
+	commandQueue.push(
+		new TurnToHeading(driveBase, odom, robotConfig, 315.0));
+
+	// Spit out wrong color
+	commandQueue.push(new InstantCommand([&]() { scoreLower(); }));
+	commandQueue.push(new WaitUntilColorSensor(opticalSensor, isRed, 2000));
+	commandQueue.push(new InstantCommand([&]() { stopAll(); }));
+
+	// // Spit out again to avoid getting stuck
+	// commandQueue.push(new InstantCommand([&]() {
+	// 	intakeField();
+	// }));
+	// commandQueue.push(new TimeoutCommand(250));
+	// commandQueue.push(new InstantCommand([&]() {
+	// 	scoreLower();
+	// }));
+	// commandQueue.push(new WaitUntilColorSensor(opticalSensor, isRed,
+	// 1000));ePisto commandQueue.push(new InstantCommand([&]() { 	stopAll();
+	// }));
+
+	// Drive to goal
+	commandQueue.push(
+		new TurnToHeading(driveBase, odom, robotConfig, 270.0));
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, -18, 1500, 25));
+
+	// Score
+	commandQueue.push(new InstantCommand([&]() { scoreLong(); }));
+	commandQueue.push(new TimeoutCommand(1000));
+	commandQueue.push(
+		// 	new DriveDistance(driveBase, odom, robotConfig, -7, 1000));
+		new DriveDistance(driveBase, odom, robotConfig, -7, 2000, 25));
+	commandQueue.push(new TimeoutCommand(1000));
+	commandQueue.push(new InstantCommand([&]() { stopAll(); }));
+
+	// Drive to loader again
+
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, 20, 1500, 50));
+	commandQueue.push(new InstantCommand([&]() { intakeLoader(); }));
+	commandQueue.push(new TimeoutCommand(100));
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, 16, 1500));
+
+	// Intake
+	// commandQueue.push(;
+	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig,
+										270.0, 100));
+	commandQueue.push(new TimeoutCommand(2000));
+	commandQueue.push(new InstantCommand([&]() { stopAll(); }));
+
+	// Go to goal
+	commandQueue.push(
+		new TurnToHeading(driveBase, odom, robotConfig, 270.0));
 	commandQueue.push(
 		new DriveDistance(driveBase, odom, robotConfig, -37, 1500, 25));
 	commandQueue.push(new InstantCommand([&]() { lowerScoring.moveOut(); }));
@@ -700,8 +802,5 @@ void opcontrolInit() {
 
 void robotInit() {
 	deviceInit();
-	//constructMatchAuton(false, true);
-	// constructMatchAuton(true, true);
-	// constructPurpleSkillsAuton();
-	constructRedSkillsAuton();
+	constructRedMatchAuton(isRedTeam);
 }
