@@ -345,7 +345,7 @@ void queueScoreLong() {
 	);
 }
 
-void constructSkillsAuton(bool isLeft, bool isRed) {
+void constructPurpleSkillsAuton() {
 	// const int LOADER_DEAD_RECKON_TIME = 2800;
 	const int LOADER_DEAD_RECKON_TIME = 3100;
 	const int LOADER_DEAD_RECKON_SPEED = 40;
@@ -702,6 +702,6 @@ void robotInit() {
 	deviceInit();
 	//constructMatchAuton(false, true);
 	// constructMatchAuton(true, true);
-	// constructSkillsAuton(false, false);
+	// constructPurpleSkillsAuton();
 	constructRedSkillsAuton();
 }
