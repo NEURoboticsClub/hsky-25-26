@@ -17,8 +17,8 @@ std::queue<Command *> commandQueue;
 // ##################### Configuration #####################
 // ---------------------------------------------------------
 // Red starts on the left, Purple starts on the right
-#define PURPLE_ROBOT // RED_ROBOT, PURPLE_ROBOT
-#define AWP // MATCH, SKILLS, AWP
+#define RED_ROBOT // RED_ROBOT, PURPLE_ROBOT
+#define MATCH // MATCH, SKILLS, AWP
 #define BLUE // RED, BLUE
 
 //---------------------------------------------------
@@ -121,7 +121,7 @@ pros::MotorGroup upperScoringMotors({1});
 
 pros::adi::DigitalOut scraperCylinder('h');
 pros::adi::DigitalOut hoodCylinder('g');
-pros::adi::DigitalOut wingCylinder('f');
+pros::adi::DigitalOut wingCylinder('a'); //f
 
 DrivebaseOdometry odom(&leftDriveMotors, &rightDriveMotors, robotConfig, &imu,
 					   true);
@@ -156,7 +156,7 @@ bool isRedTeam = false;
 // Set skils or match
 #ifdef MATCH
 int autonType = 0;
-#elif SKILLS
+#elifdef SKILLS
 int autonType = 1;
 #else // AWP
 int autonType = 2;
@@ -424,7 +424,7 @@ void constructPurpleSkillsAuton() {
 	commandQueue.push(
 		new DriveDistance(driveBase, odom, robotConfig, 30.5, 1500));
 	commandQueue.push(
-		new TurnToHeading(driveBase, odom, robotConfig, 270.0));
+		new TurnToHeading(driveBase, odom, robotConfig, 270.0, 1250));
 
 	// Intake from loader
 	queueLoaderCycle(LOADER_DEAD_RECKON_TIME, LOADER_DEAD_RECKON_SPEED);
@@ -438,16 +438,15 @@ void constructPurpleSkillsAuton() {
 	commandQueue.push(new InstantCommand([&]() { scoreLong(); }));
 	
 	// Drive towards center
-	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig,
-	180.0)); commandQueue.push( 	new DriveDistance(driveBase, odom,
-	robotConfig, 18, 1500)); commandQueue.push( 	new TurnToHeading(driveBase,
-	odom, robotConfig, 270.0));
+	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 180.0, 1250)); 
+	commandQueue.push( 	new DriveDistance(driveBase, odom, robotConfig, 18, 1500)); 
+	commandQueue.push( 	new TurnToHeading(driveBase, odom, robotConfig, 270.0, 1250));
 
 	// Cross field to opposite side
 	commandQueue.push(new InstantCommand([&]() { stopAll(); }));
 	commandQueue.push(
-		new DriveDistance(driveBase, odom, robotConfig, -88, 4500));
-	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 0.0));
+		new DriveDistance(driveBase, odom, robotConfig, -88, 3000));
+	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 0.0, 1250));
 
 	// Collect field ball with jiggle motion
 	commandQueue.push(new InstantCommand([&]() { intakeField(); }));
@@ -464,8 +463,7 @@ void constructPurpleSkillsAuton() {
 	commandQueue.push(
 		new DriveDistance(driveBase, odom, robotConfig, -15, 1500));
 	commandQueue.push(
-		new TurnToHeading(driveBase, odom, robotConfig, 90.0));
-	commandQueue.push(new TimeoutCommand(1000));
+		new TurnToHeading(driveBase, odom, robotConfig, 90.0, 1250));
 
 	// Score field balls
 	intakeField();
@@ -494,11 +492,11 @@ void constructPurpleSkillsAuton() {
 	commandQueue.push(
 		new DriveDistance(driveBase, odom, robotConfig, 10, 1400));
 	commandQueue.push(
-		new TurnToHeading(driveBase, odom, robotConfig, 0));
+		new TurnToHeading(driveBase, odom, robotConfig, 0.0, 1250));
 	commandQueue.push(
-		new DriveDistance(driveBase, odom, robotConfig, -46, 3000));
+		new DriveDistance(driveBase, odom, robotConfig, -46, 2000));
 	commandQueue.push(
-		new TurnToHeading(driveBase, odom, robotConfig, 90));
+		new TurnToHeading(driveBase, odom, robotConfig, 90, 1250));
 	commandQueue.push(
 		new DriveDistance(driveBase, odom, robotConfig, 12, 1400));
 	commandQueue.push(new InstantCommand([&]() { wing.extendPiston(); }));
@@ -509,13 +507,13 @@ void constructPurpleSkillsAuton() {
 
 	// Park ?
 	commandQueue.push(
-		new TurnToHeading(driveBase, odom, robotConfig, 180));	
+		new TurnToHeading(driveBase, odom, robotConfig, 180, 1250));	
 	commandQueue.push(
-		new DriveDistance(driveBase, odom, robotConfig, -24, 5000));
+		new DriveDistance(driveBase, odom, robotConfig, -24, 2000));
 	commandQueue.push(
-		new TurnToHeading(driveBase, odom, robotConfig, 90, 1000));
+		new TurnToHeading(driveBase, odom, robotConfig, 80, 1500));
 	commandQueue.push(
-		new DriveDistance(driveBase, odom, robotConfig, -108, 5000));
+		new DriveDistance(driveBase, odom, robotConfig, -108, 3500));
 	commandQueue.push(
 		new DriveDeadReckon(driveBase, -50, -50, 300));
 
@@ -526,7 +524,7 @@ void constructPurpleSkillsAuton() {
 		
 	
 	commandQueue.push(
-		new DriveDistance(driveBase, odom, robotConfig, -24, 5000));
+		new DriveDeadReckon(driveBase, -50, -50, 5000));
 }
 
 void constructRedSkillsAuton() {
@@ -544,11 +542,11 @@ void constructRedSkillsAuton() {
 	commandQueue.push(new TimeoutCommand(500));
 
 	// Drive to loader
-	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 90.0));
+	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 90.0, 1500));
 	commandQueue.push(
-		new DriveDistance(driveBase, odom, robotConfig, -47, 3000));
+		new DriveDistance(driveBase, odom, robotConfig, -48, 3000));
 	commandQueue.push(
-		new TurnToHeading(driveBase, odom, robotConfig, 0.0));
+		new TurnToHeading(driveBase, odom, robotConfig, 0.0, 1500));
 
 	// Intake from loader
 	queueLoaderCycle(LOADER_DEAD_RECKON_TIME + 500, LOADER_DEAD_RECKON_SPEED); // Longer drive
@@ -562,15 +560,15 @@ void constructRedSkillsAuton() {
 	commandQueue.push(new InstantCommand([&]() { scoreLong(); }));
 	
 	// Drive towards center
-	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 90.0)); 
+	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 90.0, 1500));
 	commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, 18, 1500)); 
-	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 0.0));
+	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 0.0, 1500));
 
 	// Cross field to opposite side
 	commandQueue.push(new InstantCommand([&]() { stopAll(); }));
 	commandQueue.push(
 		new DriveDistance(driveBase, odom, robotConfig, -88, 4500));
-	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 270.0));
+	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 270.0, 1500));
 
 	// Collect field ball with jiggle motion
 	commandQueue.push(new InstantCommand([&]() { intakeField(); }));
@@ -587,7 +585,7 @@ void constructRedSkillsAuton() {
 	commandQueue.push(
 		new DriveDistance(driveBase, odom, robotConfig, -15, 1500));
 	commandQueue.push(
-		new TurnToHeading(driveBase, odom, robotConfig, 180.0));
+		new TurnToHeading(driveBase, odom, robotConfig, 180.0, 1500));
 	commandQueue.push(new TimeoutCommand(1000));
 
 	// Score field balls
@@ -616,17 +614,17 @@ void constructRedSkillsAuton() {
 	commandQueue.push(
 		new DriveDistance(driveBase, odom, robotConfig, 10, 1400));
 	commandQueue.push(
-		new TurnToHeading(driveBase, odom, robotConfig, 90));
+		new TurnToHeading(driveBase, odom, robotConfig, 90, 1500));
 	commandQueue.push(
 		new DriveDistance(driveBase, odom, robotConfig, 24, 3000));
 	commandQueue.push(
-		new TurnToHeading(driveBase, odom, robotConfig, 0));
+		new TurnToHeading(driveBase, odom, robotConfig, 0, 1500));
 	
 	// Park
 	commandQueue.push(
 		new DriveDeadReckon(driveBase, 40, 40, 4500));
 	commandQueue.push(
-		new TurnToHeading(driveBase, odom, robotConfig, 260));
+		new TurnToHeading(driveBase, odom, robotConfig, 260, 1500));
 	commandQueue.push(
 		new DriveDistance(driveBase, odom, robotConfig, -30, 2500, 50));
 }
