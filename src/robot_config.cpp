@@ -16,9 +16,10 @@ std::queue<Command *> commandQueue;
 // ---------------------------------------------------------
 // ##################### Configuration #####################
 // ---------------------------------------------------------
-#define PURPLE_ROBOT
-#define MATCH
-#define BLUE
+// Red starts on the left, Purple starts on the right
+#define PURPLE_ROBOT // RED_ROBOT, PURPLE_ROBOT
+#define AWP // MATCH, SKILLS, AWP
+#define RED // RED, BLUE
 
 //---------------------------------------------------
 // ##################### Robot 1 #####################
@@ -154,9 +155,11 @@ bool isRedTeam = false;
 
 // Set skils or match
 #ifdef MATCH
-bool isMatch = true;
-#else
-bool isMatch = false;
+int autonType = 0;
+#elif SKILLS
+int autonType = 1;
+#else // AWP
+int autonType = 2;
 #endif
 
 //====================== UTILS ======================
@@ -327,6 +330,68 @@ void constructPurpleMatchAuton(bool isRed) {
 	commandQueue.push(new InstantCommand([&]() { stopAll(); }));
 	commandQueue.push(
 		new TurnToHeading(driveBase, odom, robotConfig, 270.0, 1000));
+
+	// Score long
+	queueScoreLong();
+	commandQueue.push(new InstantCommand([&]() { stopAll(); }));
+
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, 20, 1500, 50));
+	queueLoaderCycle(LOADER_DEAD_RECKON_TIME, LOADER_DEAD_RECKON_SPEED);
+
+	// Score long
+	queueScoreLong();
+
+	// Stop
+	commandQueue.push(new InstantCommand([&]() {
+		hood.extendPiston();
+		stopAll();
+	}));
+	commandQueue.push(new TimeoutCommand(100000));
+}
+
+void constructRedAWPAuton(bool isRed) {}
+
+void constructPurpleAWPAuton(bool isRed) {
+	const int LOADER_DEAD_RECKON_TIME = 2800;
+	const int LOADER_DEAD_RECKON_SPEED = 40;
+
+	commandQueue.push(new InstantCommand([&]() { imu.tare(); }));
+
+	// Go to center
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, 45.0, 2000));
+	commandQueue.push(
+		new TurnToHeading(driveBase, odom, robotConfig, 45.0, 1000));
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, 7.5, 1500));
+
+	// Score center
+	commandQueue.push(new InstantCommand([&]() { scoreLower(); }));
+	commandQueue.push(new TimeoutCommand(1500));
+	commandQueue.push(new InstantCommand([&]() { stopAll(); }));
+
+	// Drive to loader
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, -46, 2000));
+	commandQueue.push(
+		new TurnToHeading(driveBase, odom, robotConfig, 180.0, 1500, 40));
+
+	// Intake from loader
+	queueLoaderCycle(LOADER_DEAD_RECKON_TIME, LOADER_DEAD_RECKON_SPEED);
+
+	// Back up and turn to corner
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, -22, 1500));
+	commandQueue.push(
+		new TurnToHeading(driveBase, odom, robotConfig, 225.0, 1000));
+
+	// Spit out wrong color
+	commandQueue.push(new InstantCommand([&]() { scoreLower(); }));
+	commandQueue.push(new WaitUntilColorSensor(opticalSensor, isRed, 2000));
+	commandQueue.push(new InstantCommand([&]() { stopAll(); }));
+	commandQueue.push(
+		new TurnToHeading(driveBase, odom, robotConfig, 180.0, 1000));
 
 	// Score long
 	queueScoreLong();
@@ -695,17 +760,23 @@ void robotInit() {
 	deviceInit();
 
 	// constructTuningAuton();
-	if (isMatch) {
+	if (autonType == 0) {
 		if (isPurpleRobot) {
 			constructPurpleMatchAuton(isRedTeam);
 		} else {
 			constructRedMatchAuton(isRedTeam);
 		}
-	} else {
+	} else if (autonType == 1) {
 		if (isPurpleRobot) {
 			constructPurpleSkillsAuton();
 		} else {
 			constructRedSkillsAuton();
+		}
+	} else {
+		if (isPurpleRobot) {
+			constructPurpleAWPAuton(isRedTeam);
+		} else {
+			constructRedAWPAuton(isRedTeam);
 		}
 	}
 }
