@@ -19,7 +19,7 @@ std::queue<Command *> commandQueue;
 // Red starts on the left, Purple starts on the right
 #define PURPLE_ROBOT // RED_ROBOT, PURPLE_ROBOT
 #define AWP // MATCH, SKILLS, AWP
-#define RED // RED, BLUE
+#define BLUE // RED, BLUE
 
 //---------------------------------------------------
 // ##################### Robot 1 #####################
@@ -373,7 +373,7 @@ void constructPurpleAWPAuton(bool isRed) {
 
 	// Drive to loader
 	commandQueue.push(
-		new DriveDistance(driveBase, odom, robotConfig, -46, 2000));
+		new DriveDistance(driveBase, odom, robotConfig, -46.5, 2000));
 	commandQueue.push(
 		new TurnToHeading(driveBase, odom, robotConfig, 180.0, 1500, 40));
 
