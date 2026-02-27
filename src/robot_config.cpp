@@ -6,6 +6,7 @@
 #include <hskylib/utils/commands/drive_commands.h>
 #include <hskylib/utils/utils.h>
 
+#include "pros/adi.h"
 #include "pros/adi.hpp"
 #include "pros/motors.h"
 
@@ -15,9 +16,9 @@ std::queue<Command *> commandQueue;
 // ---------------------------------------------------------
 // ##################### Configuration #####################
 // ---------------------------------------------------------
-#define RED_ROBOT
+#define PURPLE_ROBOT
 #define MATCH
-#define RED
+#define BLUE
 
 //---------------------------------------------------
 // ##################### Robot 1 #####################
@@ -33,14 +34,14 @@ PIDController drivePid(7.0, 0.0, 0, PIDController::ERROR_TYPE::LINEAR);
 // PIDController turnPid(53.0, 0.67, 115.0, PIDController::ERROR_TYPE::ANGULAR);
 // PIDController turnPid(130.0, 10, 90.0, PIDController::ERROR_TYPE::ANGULAR);
 // PIDController turnPid(70.0, 0.0, 0.0, PIDController::ERROR_TYPE::ANGULAR);
-PIDController turnPid(42, 0, 19, PIDController::ERROR_TYPE::ANGULAR);
+PIDController turnPid(120, 0, 10, PIDController::ERROR_TYPE::ANGULAR);
 PIDController headingPid(50.0, 0, 0.0, PIDController::ERROR_TYPE::ANGULAR);
 
 robot_specs_t robotConfig{.driveWheelDiameter = 2.75,
 						  .trackWidth = 11.0,
 						  .odomPodDiameter = 0.0,
 						//   .maxDrivePct = 33,
-						.maxDrivePct = 45,
+						  .maxDrivePct = 45,
 						  .maxTurnPct = 100,
 						  .drivePID = &drivePid,
 						  .headingPID = &headingPid,
@@ -232,10 +233,10 @@ void queueWiggleIntake(double distance = 5.0, int times = 2) {
 void queueLoaderCycle(int deadReckonTime, uint8_t speectPct = 100) {
 	commandQueue.push(new InstantCommand([&]() { intakeLoader(); }));
 	commandQueue.push(
-		new DriveDeadReckon(driveBase, speectPct, speectPct, deadReckonTime/2 ));
-	queueWiggleIntake(1.0, 2);
-	commandQueue.push(
-		new DriveDeadReckon(driveBase, speectPct, speectPct, deadReckonTime/2 ));
+		new DriveDeadReckon(driveBase, speectPct, speectPct, deadReckonTime));
+	// queueWiggleIntake(1.0, 2);
+	// commandQueue.push(
+	// 	new DriveDeadReckon(driveBase, speectPct, speectPct, deadReckonTime/2 ));
 	commandQueue.push(new InstantCommand([&]() { stopAll(); }));
 }
 
@@ -300,100 +301,45 @@ void constructRedMatchAuton(bool isRed) {
 }
 
 void constructPurpleMatchAuton(bool isRed) {
-	// Drive to loader
+	const int LOADER_DEAD_RECKON_TIME = 3100;
+	const int LOADER_DEAD_RECKON_SPEED = 40;
+
 	commandQueue.push(new InstantCommand([&]() { imu.tare(); }));
+
+	// First loader cycle
 	commandQueue.push(
-		new DriveDistance(driveBase, odom, robotConfig, 37.0, 1500));
+		new DriveDistance(driveBase, odom, robotConfig, 30.5, 1500));
 	commandQueue.push(
-		new TurnToHeading(driveBase, odom, robotConfig, 270.0));
+		new TurnToHeading(driveBase, odom, robotConfig, 270.0, 1500));
 
 	// Intake from loader
-	commandQueue.push(new InstantCommand([&]() { intakeLoader(); }));
-	// commandQueue.push(
-	// 	new DriveDistance(driveBase, odom, robotConfig, 18, 1400));
-
-	commandQueue.push(
-		new DriveDistance(driveBase, odom, robotConfig, 40, 2000, 100));
-	// commandQueue.push(
-	// new DriveDeadReckon(driveBase, 100, 100, 1000, 100));
-	commandQueue.push(new TimeoutCommand(2000));
-	commandQueue.push(new InstantCommand([&]() { stopAll(); }));
+	queueLoaderCycle(LOADER_DEAD_RECKON_TIME, LOADER_DEAD_RECKON_SPEED);
 
 	// Back up and turn to corner
 	commandQueue.push(
 		new DriveDistance(driveBase, odom, robotConfig, -22, 1500));
-	// commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, isLeft
-	// ? 45.0 : 315.0));
 	commandQueue.push(
-		new TurnToHeading(driveBase, odom, robotConfig, 315.0));
+		new TurnToHeading(driveBase, odom, robotConfig, 315.0, 1000));
 
 	// Spit out wrong color
 	commandQueue.push(new InstantCommand([&]() { scoreLower(); }));
 	commandQueue.push(new WaitUntilColorSensor(opticalSensor, isRed, 2000));
 	commandQueue.push(new InstantCommand([&]() { stopAll(); }));
-
-	// // Spit out again to avoid getting stuck
-	// commandQueue.push(new InstantCommand([&]() {
-	// 	intakeField();
-	// }));
-	// commandQueue.push(new TimeoutCommand(250));
-	// commandQueue.push(new InstantCommand([&]() {
-	// 	scoreLower();
-	// }));
-	// commandQueue.push(new WaitUntilColorSensor(opticalSensor, isRed,
-	// 1000));ePisto commandQueue.push(new InstantCommand([&]() { 	stopAll();
-	// }));
-
-	// Drive to goal
 	commandQueue.push(
-		new TurnToHeading(driveBase, odom, robotConfig, 270.0));
-	commandQueue.push(
-		new DriveDistance(driveBase, odom, robotConfig, -18, 1500, 25));
+		new TurnToHeading(driveBase, odom, robotConfig, 270.0, 1000));
 
-	// Score
-	commandQueue.push(new InstantCommand([&]() { scoreLong(); }));
-	commandQueue.push(new TimeoutCommand(1000));
-	commandQueue.push(
-		// 	new DriveDistance(driveBase, odom, robotConfig, -7, 1000));
-		new DriveDistance(driveBase, odom, robotConfig, -7, 2000, 25));
-	commandQueue.push(new TimeoutCommand(1000));
+	// Score long
+	queueScoreLong();
 	commandQueue.push(new InstantCommand([&]() { stopAll(); }));
-
-	// Drive to loader again
 
 	commandQueue.push(
 		new DriveDistance(driveBase, odom, robotConfig, 20, 1500, 50));
-	commandQueue.push(new InstantCommand([&]() { intakeLoader(); }));
-	commandQueue.push(new TimeoutCommand(100));
-	commandQueue.push(
-		new DriveDistance(driveBase, odom, robotConfig, 16, 1500));
+	queueLoaderCycle(LOADER_DEAD_RECKON_TIME, LOADER_DEAD_RECKON_SPEED);
 
-	// Intake
-	// commandQueue.push(;
-	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig,
-										270.0, 100));
-	commandQueue.push(new TimeoutCommand(2000));
-	commandQueue.push(new InstantCommand([&]() { stopAll(); }));
+	// Score long
+	queueScoreLong();
 
-	// Go to goal
-	commandQueue.push(
-		new TurnToHeading(driveBase, odom, robotConfig, 270.0));
-	commandQueue.push(
-		new DriveDistance(driveBase, odom, robotConfig, -37, 1500, 25));
-	commandQueue.push(new InstantCommand([&]() { lowerScoring.moveOut(); }));
-	commandQueue.push(new TimeoutCommand(200));
-	// Score
-	commandQueue.push(new InstantCommand([&]() { scoreLong(); }));
-	commandQueue.push(
-		new DriveDistance(driveBase, odom, robotConfig, -7, 2000, 25));
-	commandQueue.push(new TimeoutCommand(5000));
-
-	// Stop and flip hood
-	commandQueue.push(new InstantCommand([&]() {
-		hood.retractPiston();
-		stopAll();
-	}));
-	commandQueue.push(new TimeoutCommand(1000));
+	// Stop
 	commandQueue.push(new InstantCommand([&]() {
 		hood.extendPiston();
 		stopAll();
@@ -622,17 +568,6 @@ void constructRedSkillsAuton() {
 
 void constructTuningAuton() {
 	commandQueue.push(new InstantCommand([&]() { imu.tare(); }));
-	queueScoreLong();
-	commandQueue.push(new TimeoutCommand(3000));
-	commandQueue.push(new InstantCommand([&]() { stopAll(); }));
-	commandQueue.push(
-		new TurnToHeading(driveBase, odom, robotConfig, 180));
-	commandQueue.push(new TimeoutCommand(3000));
-	commandQueue.push(new InstantCommand([&]() { stopAll(); }));
-	queueScoreLong();
-	commandQueue.push(new InstantCommand([&]() { stopAll(); }));
-	// return;
-	// commandQueue.push(new InstantCommand([&]() { imu.tare(); }));
 	// commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, 48.0,
 	// 5500)); commandQueue.push(new TimeoutCommand(3000));
 	// commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, -48.0,
@@ -645,12 +580,14 @@ void constructTuningAuton() {
 	// commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, -10.0, 99999));
 	// commandQueue.push(new TurnToHeading())
 	// for (int i = 0; i < 4; i++) {
-		// commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 90, 20000));
-		commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, 88.0, 99999));
-		commandQueue.push(new TimeoutCommand(1000));
-		// commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 0, 20000));
-		commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, -88.0, 99999));
-		commandQueue.push(new TimeoutCommand(1000));
+	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 45, 1000));
+	commandQueue.push(new TimeoutCommand(1000));
+	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 0, 1000));
+	commandQueue.push(new TimeoutCommand(1000));
+	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 90, 1000));
+	commandQueue.push(new TimeoutCommand(1000));
+	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 0, 1000));
+	commandQueue.push(new TimeoutCommand(1000));
 	// }
 	// commandQueue.push(
 	// 	new DriveDistance(driveBase, odom, robotConfig, 20.0, 1500));
@@ -757,6 +694,7 @@ void opcontrolInit() {
 void robotInit() {
 	deviceInit();
 
+	// constructTuningAuton();
 	if (isMatch) {
 		if (isPurpleRobot) {
 			constructPurpleMatchAuton(isRedTeam);
