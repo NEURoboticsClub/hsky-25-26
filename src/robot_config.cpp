@@ -18,8 +18,8 @@ std::queue<Command *> commandQueue;
 // ---------------------------------------------------------
 // Red starts on the left, Purple starts on the right
 #define RED_ROBOT // RED_ROBOT, PURPLE_ROBOT
-#define MATCH // MATCH, SKILLS, AWP
-#define BLUE // RED, BLUE
+#define SKILLS // MATCH, SKILLS, AWP
+#define RED // RED, BLUE
 
 //---------------------------------------------------
 // ##################### Robot 1 #####################
@@ -96,7 +96,7 @@ bool isPurpleRobot = false;
 PIDController drivePid(5.0, 0.0, 0, PIDController::ERROR_TYPE::LINEAR);
 // PIDController drivePid(0.15, 0.0, 0.05, PIDController::ERROR_TYPE::LINEAR);
 // PIDController turnPid(80.0, 0.0 , 0.0, PIDController::ERROR_TYPE::ANGULAR);
-PIDController turnPid(180, 0, 20, PIDController::ERROR_TYPE::ANGULAR);
+PIDController turnPid(131, 0, 2, PIDController::ERROR_TYPE::ANGULAR);
 PIDController headingPid(100.0, 0.0, 0.0, PIDController::ERROR_TYPE::ANGULAR);
 // PIDController headingPid(60.0, 0.0, 0.0, PIDController::ERROR_TYPE::ANGULAR);
 
@@ -104,7 +104,7 @@ robot_specs_t robotConfig{.driveWheelDiameter = 2.75,
 						  .trackWidth = 11.0,
 						  .odomPodDiameter = 0.0,
 						  .maxDrivePct = 33,
-						  .maxTurnPct = 40,
+						  .maxTurnPct = 50,
 						  .drivePID = &drivePid,
 						  .headingPID = &headingPid,
 						  .turnPID = &turnPid};
@@ -121,7 +121,7 @@ pros::MotorGroup upperScoringMotors({1});
 
 pros::adi::DigitalOut scraperCylinder('h');
 pros::adi::DigitalOut hoodCylinder('g');
-pros::adi::DigitalOut wingCylinder('a'); //f
+pros::adi::DigitalOut wingCylinder('f'); //f
 
 DrivebaseOdometry odom(&leftDriveMotors, &rightDriveMotors, robotConfig, &imu,
 					   true);
@@ -264,10 +264,10 @@ void constructRedMatchAuton(bool isRed) {
 
 	// First loader cycle
 	commandQueue.push(
-		new DriveDistance(driveBase, odom, robotConfig, 30.5, 1500));
+		new DriveDistance(driveBase, odom, robotConfig, 30.5, 2500));
 	commandQueue.push(
 		new TurnToHeading(driveBase, odom, robotConfig, 90.0, 1500));
-
+	
 	// Intake from loader
 	queueLoaderCycle(LOADER_DEAD_RECKON_TIME, LOADER_DEAD_RECKON_SPEED);
 
@@ -643,13 +643,13 @@ void constructTuningAuton() {
 	// commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, -10.0, 99999));
 	// commandQueue.push(new TurnToHeading())
 	// for (int i = 0; i < 4; i++) {
-	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 45, 1000));
+	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 45, 1250));
 	commandQueue.push(new TimeoutCommand(1000));
-	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 0, 1000));
+	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 0, 1250));
 	commandQueue.push(new TimeoutCommand(1000));
-	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 90, 1000));
+	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 90, 1250));
 	commandQueue.push(new TimeoutCommand(1000));
-	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 0, 1000));
+	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 0, 1250));
 	commandQueue.push(new TimeoutCommand(1000));
 	// }
 	// commandQueue.push(
