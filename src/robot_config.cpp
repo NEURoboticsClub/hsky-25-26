@@ -2,6 +2,8 @@
 
 #include <hskylib/robot_specs.h>
 #include <hskylib/subsystems/pneumatics.h>
+#include <hskylib/utils/controls/feedforward.h>
+#include <hskylib/utils/trajectory.h>
 #include <hskylib/utils/utils.h>
 
 #include "pros/adi.hpp"
@@ -31,6 +33,13 @@ PIDController drivePid(0.1, 0.0, 0, PIDController::ERROR_TYPE::LINEAR);
 PIDController turnPid(53.0, 0, 90.0, PIDController::ERROR_TYPE::ANGULAR);
 PIDController headingPid(0.0, 0, 0.0, PIDController::ERROR_TYPE::ANGULAR);
 
+PIDController velocityLeftPid(0.0, 0.0, 0.0, PIDController::ERROR_TYPE::LINEAR);
+PIDController velocityRightPid(0.0, 0.0, 0.0,
+							   PIDController::ERROR_TYPE::LINEAR);
+
+FeedForward feedForwardLeft(0.0, 0.0, 0.0);
+FeedForward feedForwardRight(0.0, 0.0, 0.0);
+
 robot_specs_t robotConfig{.driveWheelDiameter = 2.75,
 						  .trackWidth = 11.0,
 						  .odomPodDiameter = 0.0,
@@ -38,7 +47,11 @@ robot_specs_t robotConfig{.driveWheelDiameter = 2.75,
 						  .maxTurnPct = 100.0,
 						  .drivePID = &drivePid,
 						  .headingPID = &headingPid,
-						  .turnPID = &turnPid};
+						  .turnPID = &turnPid,
+						  .velocityLeftPID = &velocityLeftPid,
+						  .velocityRightPID = &velocityRightPid,
+						  .feedForwardLeft = &feedForwardLeft,
+						  .feedForwardRight = &feedForwardRight};
 
 // //===================== DEVICES =====================
 
@@ -63,7 +76,9 @@ DrivebaseOdometry odom(&leftDriveMotors, &rightDriveMotors, robotConfig, &imu,
 
 TankDrive driveBase(leftDriveMotors, rightDriveMotors,
 					pros::E_MOTOR_BRAKE_COAST, pros::E_MOTOR_GEAR_600, 1.0,
-					0.75);
+					0.75, *robotConfig.feedForwardLeft,
+					*robotConfig.feedForwardRight, *robotConfig.velocityLeftPID,
+					*robotConfig.velocityRightPID);
 Transport lowerScoring(lowerScoringMotors, 1, pros::E_MOTOR_BRAKE_COAST,
 					   pros::E_MOTOR_GEAR_600);
 Transport upperScoring(upperScoringMotors, 1, pros::E_MOTOR_BRAKE_COAST,
@@ -85,10 +100,17 @@ bool isLeft = true;	 // TODO: Should be true
 
 //===================== CONFIG =====================
 
-PIDController drivePid(5.0, 0.0, 0, PIDController::ERROR_TYPE::LINEAR);
+PIDController drivePid(5.0, 0.0, 0.0, PIDController::ERROR_TYPE::LINEAR);
 // PIDController drivePid(0.15, 0.0, 0.05, PIDController::ERROR_TYPE::LINEAR);
 PIDController turnPid(50.0, 0.0, 0.0, PIDController::ERROR_TYPE::ANGULAR);
-PIDController headingPid(0.0, 0, 0.0, PIDController::ERROR_TYPE::ANGULAR);
+PIDController headingPid(0.0, 0.0, 0.0, PIDController::ERROR_TYPE::ANGULAR);
+
+PIDController velocityLeftPid(0.0, 0.0, 0.0, PIDController::ERROR_TYPE::LINEAR);
+PIDController velocityRightPid(0.0, 0.0, 0.0,
+							   PIDController::ERROR_TYPE::LINEAR);
+
+FeedForward feedForwardLeft(0.0, 0.0, 0.0);
+FeedForward feedForwardRight(0.0, 0.0, 0.0);
 
 robot_specs_t robotConfig{.driveWheelDiameter = 2.75,
 						  .trackWidth = 11.0,
@@ -97,7 +119,11 @@ robot_specs_t robotConfig{.driveWheelDiameter = 2.75,
 						  .maxTurnPct = 100,
 						  .drivePID = &drivePid,
 						  .headingPID = &headingPid,
-						  .turnPID = &turnPid};
+						  .turnPID = &turnPid,
+						  .velocityLeftPID = &velocityLeftPid,
+						  .velocityRightPID = &velocityRightPid,
+						  .feedForwardLeft = &feedForwardLeft,
+						  .feedForwardRight = &feedForwardRight};
 
 //===================== DEVICES =====================
 
@@ -120,8 +146,10 @@ DrivebaseOdometry odom(&leftDriveMotors, &rightDriveMotors, robotConfig, &imu,
 //==================== SUBSYSTEMS ====================
 
 TankDrive driveBase(leftDriveMotors, rightDriveMotors,
-					pros::E_MOTOR_BRAKE_COAST, pros::E_MOTOR_GEAR_600, 1.0,
-					1.0);
+					pros::E_MOTOR_BRAKE_COAST, pros::E_MOTOR_GEAR_600, 1.0, 1.0,
+					*robotConfig.feedForwardLeft, *robotConfig.feedForwardRight,
+					*robotConfig.velocityLeftPID,
+					*robotConfig.velocityRightPID);
 Transport lowerScoring(lowerScoringMotors, 1, pros::E_MOTOR_BRAKE_COAST,
 					   pros::E_MOTOR_GEAR_600);
 Transport upperScoring(upperScoringMotors, 1, pros::E_MOTOR_BRAKE_COAST,
