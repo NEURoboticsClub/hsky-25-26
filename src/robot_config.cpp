@@ -17,9 +17,9 @@ std::queue<Command *> commandQueue;
 // ##################### Configuration #####################
 // ---------------------------------------------------------
 // Red starts on the left, Purple starts on the right
-#define RED_ROBOT // RED_ROBOT, PURPLE_ROBOT
-#define SKILLS // MATCH, SKILLS, AWP
-#define RED // RED, BLUE
+#define PURPLE_ROBOT // RED_ROBOT, PURPLE_ROBOT
+#define MATCH // MATCH, SKILLS, AWP
+#define BLUE // RED, BLUE
 
 //---------------------------------------------------
 // ##################### Robot 1 #####################
@@ -60,7 +60,7 @@ pros::MotorGroup lowerScoringMotors({-6});
 pros::MotorGroup upperScoringMotors({4});
 
 pros::adi::DigitalOut scraperCylinder('b');
-pros::adi::DigitalOut hoodCylinder('a');
+pros::adi::DigitalOut hoodCylinder('a', true);
 pros::adi::DigitalOut wingCylinder('c');
 
 pros::Optical opticalSensor(15);
@@ -188,7 +188,6 @@ void scoreUpper() {
 }
 
 void scoreLower() {
-	scraper.retractPiston();
 	upperScoring.moveOut();
 	lowerScoring.moveOut(0);
 	intake.moveOut(60);
@@ -248,12 +247,13 @@ void queueScoreLong() {
 		new DriveDistance(driveBase, odom, robotConfig, -37, 1500));
 
 	commandQueue.push(
-		new DriveDeadReckon(driveBase, -100, -100, 500)
+		new DriveDeadReckon(driveBase, -50, -50, 500)
 	);
 	commandQueue.push(new InstantCommand([&]() { scoreLong(); }));
 	commandQueue.push(
-		new DriveDeadReckon(driveBase, -100, -100, 2200)
+		new DriveDeadReckon(driveBase, -50, -50, 1000)
 	);
+	commandQueue.push(new TimeoutCommand(1200));
 }
 
 void constructRedMatchAuton(bool isRed) {
@@ -278,6 +278,7 @@ void constructRedMatchAuton(bool isRed) {
 		new TurnToHeading(driveBase, odom, robotConfig, 45.0, 1000));
 
 	// Spit out wrong color
+	commandQueue.push(new InstantCommand([&]() { scraper.retractPiston(); }));
 	commandQueue.push(new InstantCommand([&]() { scoreLower(); }));
 	commandQueue.push(new WaitUntilColorSensor(opticalSensor, isRed, 2000));
 	commandQueue.push(new InstantCommand([&]() { stopAll(); }));
@@ -325,6 +326,7 @@ void constructPurpleMatchAuton(bool isRed) {
 		new TurnToHeading(driveBase, odom, robotConfig, 315.0, 1000));
 
 	// Spit out wrong color
+	commandQueue.push(new InstantCommand([&]() { scraper.retractPiston(); }));
 	commandQueue.push(new InstantCommand([&]() { scoreLower(); }));
 	commandQueue.push(new WaitUntilColorSensor(opticalSensor, isRed, 2000));
 	commandQueue.push(new InstantCommand([&]() { stopAll(); }));
