@@ -18,8 +18,8 @@ std::queue<Command *> commandQueue;
 // ---------------------------------------------------------
 // Red starts on the left, Purple starts on the right
 #define PURPLE_ROBOT // RED_ROBOT, PURPLE_ROBOT
-#define MATCH // MATCH, SKILLS, AWP
-#define BLUE // RED, BLUE
+#define SKILLS // MATCH, SKILLS, AWP
+#define RED // RED, BLUE
 
 //---------------------------------------------------
 // ##################### Robot 1 #####################
@@ -234,6 +234,7 @@ void queueWiggleIntake(double distance = 5.0, int times = 2) {
 
 void queueLoaderCycle(int deadReckonTime, uint8_t speectPct = 100) {
 	commandQueue.push(new InstantCommand([&]() { intakeLoader(); }));
+	commandQueue.push(new TimeoutCommand(250));
 	commandQueue.push(
 		new DriveDeadReckon(driveBase, speectPct, speectPct, deadReckonTime));
 	// queueWiggleIntake(1.0, 2);
@@ -247,13 +248,27 @@ void queueScoreLong() {
 		new DriveDistance(driveBase, odom, robotConfig, -37, 1500));
 
 	commandQueue.push(
-		new DriveDeadReckon(driveBase, -50, -50, 500)
+		new DriveDeadReckon(driveBase, -50, -50, 250)
 	);
 	commandQueue.push(new InstantCommand([&]() { scoreLong(); }));
 	commandQueue.push(
 		new DriveDeadReckon(driveBase, -50, -50, 1000)
 	);
 	commandQueue.push(new TimeoutCommand(1200));
+}
+
+void queueScoreLongCut() {
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, -37, 1500));
+
+	commandQueue.push(
+		new DriveDeadReckon(driveBase, -50, -50, 250)
+	);
+	commandQueue.push(new InstantCommand([&]() { scoreLong(); }));
+	// commandQueue.push(
+	// 	new DriveDeadReckon(driveBase, -50, -50, 1000)
+	// );
+	commandQueue.push(new TimeoutCommand(2200));
 }
 
 void constructRedMatchAuton(bool isRed) {
@@ -264,7 +279,7 @@ void constructRedMatchAuton(bool isRed) {
 
 	// First loader cycle
 	commandQueue.push(
-		new DriveDistance(driveBase, odom, robotConfig, 30.5, 2500));
+		new DriveDistance(driveBase, odom, robotConfig, 32.0, 2500));
 	commandQueue.push(
 		new TurnToHeading(driveBase, odom, robotConfig, 90.0, 1500));
 	
@@ -286,7 +301,7 @@ void constructRedMatchAuton(bool isRed) {
 		new TurnToHeading(driveBase, odom, robotConfig, 90.0, 1000));
 
 	// Score long
-	queueScoreLong();
+	queueScoreLongCut();
 	commandQueue.push(new InstantCommand([&]() { stopAll(); }));
 
 	commandQueue.push(
@@ -294,7 +309,7 @@ void constructRedMatchAuton(bool isRed) {
 	queueLoaderCycle(LOADER_DEAD_RECKON_TIME, LOADER_DEAD_RECKON_SPEED);
 
 	// Score long
-	queueScoreLong();
+	queueScoreLongCut();
 
 	// Stop
 	commandQueue.push(new InstantCommand([&]() {
