@@ -34,12 +34,12 @@ PIDController drivePid(0.1, 0.0, 0, PIDController::ERROR_TYPE::LINEAR);
 PIDController turnPid(53.0, 0, 90.0, PIDController::ERROR_TYPE::ANGULAR);
 PIDController headingPid(0.0, 0, 0.0, PIDController::ERROR_TYPE::ANGULAR);
 
-PIDController velocityLeftPid(10, 0.0, 0, PIDController::ERROR_TYPE::LINEAR);
-PIDController velocityRightPid(10, 0.0, 0,
+PIDController velocityLeftPid(50, 0.0, 0, PIDController::ERROR_TYPE::LINEAR);
+PIDController velocityRightPid(50, 0.0, 0,
 							   PIDController::ERROR_TYPE::LINEAR);
 
-FeedForward feedForwardLeft(0.05, 0.012, 0.001);
-FeedForward feedForwardRight(0.05, 0.012, 0.001);
+FeedForward feedForwardLeft(5, 1, 0.1);
+FeedForward feedForwardRight(5, 1, 0.1);
 
 robot_specs_t robotConfig{.driveWheelDiameter = 2.75,
 						  .trackWidth = 11.0,
