@@ -34,8 +34,8 @@ PIDController drivePid(0.1, 0.0, 0, PIDController::ERROR_TYPE::LINEAR);
 PIDController turnPid(53.0, 0, 90.0, PIDController::ERROR_TYPE::ANGULAR);
 PIDController headingPid(0.0, 0, 0.0, PIDController::ERROR_TYPE::ANGULAR);
 
-PIDController velocityLeftPid(0.05, 0.0, 0.25, PIDController::ERROR_TYPE::LINEAR);
-PIDController velocityRightPid(0.05, 0.0, 0.25,
+PIDController velocityLeftPid(10, 0.0, 0, PIDController::ERROR_TYPE::LINEAR);
+PIDController velocityRightPid(10, 0.0, 0,
 							   PIDController::ERROR_TYPE::LINEAR);
 
 FeedForward feedForwardLeft(0.05, 0.012, 0.001);
