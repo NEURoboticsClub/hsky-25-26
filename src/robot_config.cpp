@@ -12,6 +12,7 @@
 
 HskyController controller(pros::E_CONTROLLER_MASTER);
 std::queue<Command *> commandQueue;
+std::optional<pose_t> startPose;
 
 // ---------------------------------------------------------
 // ##################### Configuration #####################
@@ -167,6 +168,12 @@ int autonType = 2;
 void deviceInit() {
 	pros::delay(1000);	// Allow time for devices to initialize
 	odom.reset();
+	
+	if (!startPose.has_value()) {
+		throw std::runtime_error("startPose not set for autonomous routine");
+	}
+	odom.setPose(startPose.value());
+
 	odom.init();
 
 	imu.reset();
@@ -272,6 +279,7 @@ void queueScoreLongCut() {
 }
 
 void constructRedMatchAuton(bool isRed) {
+	startPose = pose_t(0, 0, 0 * std::numbers::pi / 180.0);
 	const int LOADER_DEAD_RECKON_TIME = 3100;
 	const int LOADER_DEAD_RECKON_SPEED = 40;
 
@@ -320,6 +328,7 @@ void constructRedMatchAuton(bool isRed) {
 }
 
 void constructPurpleMatchAuton(bool isRed) {
+	startPose = pose_t(0, 0, 0 * std::numbers::pi / 180.0);
 	const int LOADER_DEAD_RECKON_TIME = 3100;
 	const int LOADER_DEAD_RECKON_SPEED = 40;
 
@@ -370,6 +379,7 @@ void constructPurpleMatchAuton(bool isRed) {
 void constructRedAWPAuton(bool isRed) {}
 
 void constructPurpleAWPAuton(bool isRed) {
+	startPose = pose_t(0, 0, 0 * std::numbers::pi / 180.0);
 	const int LOADER_DEAD_RECKON_TIME = 2800;
 	const int LOADER_DEAD_RECKON_SPEED = 40;
 
@@ -430,7 +440,7 @@ void constructPurpleAWPAuton(bool isRed) {
 }
 
 void constructPurpleSkillsAuton() {
-	// const int LOADER_DEAD_RECKON_TIME = 2800;
+	startPose = pose_t(0, 0, 0 * std::numbers::pi / 180.0);
 	const int LOADER_DEAD_RECKON_TIME = 3100;
 	const int LOADER_DEAD_RECKON_SPEED = 40;
 	const int SCORE_LONG_TIME = 1500;
@@ -545,6 +555,7 @@ void constructPurpleSkillsAuton() {
 }
 
 void constructRedSkillsAuton() {
+	startPose = pose_t(0, 0, 0 * std::numbers::pi / 180.0);
 	const int LOADER_DEAD_RECKON_TIME = 3100;
 	const int LOADER_DEAD_RECKON_SPEED = 40;
 	const int SCORE_LONG_TIME = 1500;
@@ -647,6 +658,7 @@ void constructRedSkillsAuton() {
 }
 
 void constructTuningAuton() {
+	startPose = pose_t(0, 0, 0 * std::numbers::pi / 180.0);
 	commandQueue.push(new InstantCommand([&]() { imu.tare(); }));
 	// commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, 48.0,
 	// 5500)); commandQueue.push(new TimeoutCommand(3000));
