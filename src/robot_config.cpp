@@ -13,6 +13,8 @@
 HskyController controller(pros::E_CONTROLLER_MASTER);
 std::queue<Command *> commandQueue;
 std::optional<pose_t> startPose;
+bool isAutonomousRunning = false;
+pros::Task* failsafeTask = nullptr;
 
 // ---------------------------------------------------------
 // ##################### Configuration #####################

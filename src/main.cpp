@@ -19,7 +19,15 @@ void initialize() { robotInit(); }
  * the VEX Competition Switch, following either autonomous or opcontrol. When
  * the robot is enabled, this task will exit.
  */
-void disabled() {}
+void disabled() {
+	isAutonomousRunning = false;
+
+	if (failsafeTask != nullptr) {
+		failsafeTask->remove();
+		delete failsafeTask;
+		failsafeTask = nullptr;
+	}
+}
 
 /**
  * Runs after initialize(), and before autonomous when connected to the Field
@@ -45,7 +53,21 @@ void competition_initialize() {}
  */
 void autonomous() {
 	CommandRunner commandRunner(commandQueue);
+	isAutonomousRunning = true;
+
+	failsafeTask = new pros::Task([&commandRunner]() {
+		while (isAutonomousRunning) {
+			pose_t pose = odom.update();
+			if (pose.y >= 65.0) {
+				commandRunner.stop();
+				break;
+			}
+			pros::delay(20);
+		}
+	});
+
 	commandRunner.run();
+	isAutonomousRunning = false;
 }
 
 /**

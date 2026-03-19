@@ -19,8 +19,9 @@ extern DrivebaseOdometry odom;
 extern pros::IMU imu;
 extern std::queue<Command *> commandQueue;
 extern std::optional<pose_t> startPose;
-
-void opcontrolInit();
+extern bool isAutonomousRunning;
+extern pros::Task* failsafeTask;
 void robotInit();
+void opcontrolInit();
 
 #endif
