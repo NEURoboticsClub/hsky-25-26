@@ -171,10 +171,9 @@ void deviceInit() {
 	pros::delay(1000);	// Allow time for devices to initialize
 	odom.reset();
 	
-	// if (!startPose.has_value()) {
-	// 	throw std::runtime_error("startPose not set for autonomous routine");
-	// }
-	startPose = pose_t(0, 8, 90 * std::numbers::pi / 180.0);
+	if (!startPose.has_value()) {
+		throw std::runtime_error("startPose not set for autonomous routine");
+	}
 	odom.setPose(startPose.value());
 
 	imu.reset();
@@ -787,28 +786,27 @@ void opcontrolInit() {
 #endif
 
 void robotInit() {
+	// constructTuningAuton();
+
+	if (autonType == 0) {
+		if (isPurpleRobot) {
+			constructPurpleMatchAuton(isRedTeam);
+		} else {
+			constructRedMatchAuton(isRedTeam);
+		}
+	} else if (autonType == 1) {
+		if (isPurpleRobot) {
+			constructPurpleSkillsAuton();
+		} else {
+			constructRedSkillsAuton();
+		}
+	} else {
+		if (isPurpleRobot) {
+			constructPurpleAWPAuton(isRedTeam);
+		} else {
+			constructRedAWPAuton(isRedTeam);
+		}
+	}
+
 	deviceInit();
-
-	constructTuningAuton();
-	// if (autonType == 0) {
-	// 	if (isPurpleRobot) {
-	// 		constructPurpleMatchAuton(isRedTeam);
-	// 	} else {
-	// 		constructRedMatchAuton(isRedTeam);
-	// 	}
-	// } else if (autonType == 1) {
-	// 	if (isPurpleRobot) {
-	// 		constructPurpleSkillsAuton();
-	// 	} else {
-	// 		constructRedSkillsAuton();
-	// 	}
-	// } else {
-	// 	if (isPurpleRobot) {
-	// 		constructPurpleAWPAuton(isRedTeam);
-	// 	} else {
-	// 		constructRedAWPAuton(isRedTeam);
-	// 	}
-	// }
-
-
 }

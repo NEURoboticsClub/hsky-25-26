@@ -21,6 +21,7 @@ extern std::queue<Command *> commandQueue;
 extern std::optional<pose_t> startPose;
 extern bool isAutonomousRunning;
 extern pros::Task* failsafeTask;
+extern int autonType;
 void robotInit();
 void opcontrolInit();
 
