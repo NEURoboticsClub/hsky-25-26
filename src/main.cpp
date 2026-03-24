@@ -56,15 +56,24 @@ void autonomous() {
 	isAutonomousRunning = true;
 
 	failsafeTask = new pros::Task([&commandRunner]() {
+		pose_t* pose = new pose_t();
 		while (isAutonomousRunning) {
-			pose_t pose = odom.update();
-			if (pose.y >= 65.0) {
+			odom.getPose(pose);
+			printf("Current pose: x = %f, y = %f, heading = %f\n", pose->x, pose->y,
+				   pose->theta * 180.0 / std::numbers::pi);
+			pros::lcd::print(0, "x: %f", pose->x);
+			pros::lcd::print(1, "y: %f", pose->y);
+			pros::lcd::print(2, "heading: %f", pose->theta * 180.0 / std::numbers::pi);
+			if (pose->y >= 65.0) {
 				commandRunner.stop();
+				printf("Failsafe triggered: y = %f\n", pose->y);
 				break;
 			}
 			pros::delay(20);
 		}
+		delete pose;
 	});
+	printf("Starting autonomous with %d commands in queue\n", commandQueue.size());
 
 	commandRunner.run();
 	isAutonomousRunning = false;
