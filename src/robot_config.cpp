@@ -20,8 +20,8 @@ pros::Task* failsafeTask = nullptr;
 // ##################### Configuration #####################
 // ---------------------------------------------------------
 // Red starts on the left, Purple starts on the right
-#define PURPLE_ROBOT // RED_ROBOT, PURPLE_ROBOT
-#define SKILLS // MATCH, SKILLS, AWP
+#define RED_ROBOT // RED_ROBOT, PURPLE_ROBOT
+#define MATCH // MATCH, SKILLS, AWP
 #define RED // RED, BLUE
 
 //---------------------------------------------------
@@ -171,18 +171,18 @@ void deviceInit() {
 	pros::delay(1000);	// Allow time for devices to initialize
 	odom.reset();
 	
-	if (!startPose.has_value()) {
-		throw std::runtime_error("startPose not set for autonomous routine");
-	}
+	// if (!startPose.has_value()) {
+	// 	throw std::runtime_error("startPose not set for autonomous routine");
+	// }
+	startPose = pose_t(0, 8, 90 * std::numbers::pi / 180.0);
 	odom.setPose(startPose.value());
-
-	odom.init();
 
 	imu.reset();
 	while (imu.is_calibrating() || !std::isfinite(imu.get_heading())) {
 		pros::delay(20);
 	}
 }
+
 void scoreLong() {
 	hood.extendPiston();
 	upperScoring.moveIn();
@@ -660,10 +660,11 @@ void constructRedSkillsAuton() {
 }
 
 void constructTuningAuton() {
-	startPose = pose_t(0, 0, 0 * std::numbers::pi / 180.0);
+	startPose = pose_t(0, 8, 90 * std::numbers::pi / 180.0);
 	commandQueue.push(new InstantCommand([&]() { imu.tare(); }));
-	// commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, 48.0,
-	// 5500)); commandQueue.push(new TimeoutCommand(3000));
+	commandQueue.push(new DriveDeadReckon(driveBase, 20, 20, 100000));
+	// commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, 48.0, 5500)); 
+	commandQueue.push(new TimeoutCommand(100000));
 	// commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, -48.0,
 	// 5500));
 
@@ -674,14 +675,14 @@ void constructTuningAuton() {
 	// commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, -10.0, 99999));
 	// commandQueue.push(new TurnToHeading())
 	// for (int i = 0; i < 4; i++) {
-	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 45, 1250));
-	commandQueue.push(new TimeoutCommand(1000));
-	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 0, 1250));
-	commandQueue.push(new TimeoutCommand(1000));
-	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 90, 1250));
-	commandQueue.push(new TimeoutCommand(1000));
-	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 0, 1250));
-	commandQueue.push(new TimeoutCommand(1000));
+	// commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 45, 1250));
+	// commandQueue.push(new TimeoutCommand(1000));
+	// commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 0, 1250));
+	// commandQueue.push(new TimeoutCommand(1000));
+	// commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 90, 1250));
+	// commandQueue.push(new TimeoutCommand(1000));
+	// commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 0, 1250));
+	// commandQueue.push(new TimeoutCommand(1000));
 	// }
 	// commandQueue.push(
 	// 	new DriveDistance(driveBase, odom, robotConfig, 20.0, 1500));
@@ -788,24 +789,26 @@ void opcontrolInit() {
 void robotInit() {
 	deviceInit();
 
-	// constructTuningAuton();
-	if (autonType == 0) {
-		if (isPurpleRobot) {
-			constructPurpleMatchAuton(isRedTeam);
-		} else {
-			constructRedMatchAuton(isRedTeam);
-		}
-	} else if (autonType == 1) {
-		if (isPurpleRobot) {
-			constructPurpleSkillsAuton();
-		} else {
-			constructRedSkillsAuton();
-		}
-	} else {
-		if (isPurpleRobot) {
-			constructPurpleAWPAuton(isRedTeam);
-		} else {
-			constructRedAWPAuton(isRedTeam);
-		}
-	}
+	constructTuningAuton();
+	// if (autonType == 0) {
+	// 	if (isPurpleRobot) {
+	// 		constructPurpleMatchAuton(isRedTeam);
+	// 	} else {
+	// 		constructRedMatchAuton(isRedTeam);
+	// 	}
+	// } else if (autonType == 1) {
+	// 	if (isPurpleRobot) {
+	// 		constructPurpleSkillsAuton();
+	// 	} else {
+	// 		constructRedSkillsAuton();
+	// 	}
+	// } else {
+	// 	if (isPurpleRobot) {
+	// 		constructPurpleAWPAuton(isRedTeam);
+	// 	} else {
+	// 		constructRedAWPAuton(isRedTeam);
+	// 	}
+	// }
+
+
 }
