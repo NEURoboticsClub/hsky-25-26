@@ -34,12 +34,12 @@ PIDController drivePid(0.1, 0.0, 0, PIDController::ERROR_TYPE::LINEAR);
 PIDController turnPid(53.0, 0, 90.0, PIDController::ERROR_TYPE::ANGULAR);
 PIDController headingPid(0.0, 0, 0.0, PIDController::ERROR_TYPE::ANGULAR);
 
-PIDController velocityLeftPid(100, 0.0, 0, PIDController::ERROR_TYPE::LINEAR);
-PIDController velocityRightPid(100, 0.0, 0,
+PIDController velocityLeftPid(5.0, 0.0, 0, PIDController::ERROR_TYPE::LINEAR);
+PIDController velocityRightPid(5.0, 0.0, 0,
 							   PIDController::ERROR_TYPE::LINEAR);
 
-FeedForward feedForwardLeft(15, 5, 1);
-FeedForward feedForwardRight(15, 5, 1);
+FeedForward feedForwardLeft(0.0, 0.0, 0.0);
+FeedForward feedForwardRight(0.0, 0.0, 0.0);
 
 robot_specs_t robotConfig{.driveWheelDiameter = 2.75,
 						  .trackWidth = 11.0,
@@ -238,11 +238,12 @@ void constructAuton(bool isLeft, bool isRed) {
 	commandQueue.push(new InstantCommand([&]() { imu.tare(); }));
 
 	static trajectoryState_t forwardStates[] = {
-		{.time = 0.0, .pose = {0.0, 0.0, 0.0},  .v = 12.0, .omega = 0.0},
-		{.time = 2.0, .pose = {24.0, 0.0, 0.0}, .v = 12.0, .omega = 0.0},
+		{.time = 0.0, .pose = {0.0, 0.0, 0.0},  .v = 0.0, .omega = 0.0},
+		{.time = 1.0, .pose = {12.0, 0.0, 0.0}, .v = 1.0, .omega = 0.0},
+		{.time = 100.0, .pose = {24.0, 0.0, 0.0}, .v = 0.0, .omega = 0.0},
 	};
 
-	Trajectory forwardTrajectory(forwardStates, 2);
+	Trajectory forwardTrajectory(forwardStates, 3);
 
     commandQueue.push(new FollowTrajectoryCommand(
         driveBase, odom, robotConfig, forwardTrajectory,
