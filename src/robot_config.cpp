@@ -6,11 +6,14 @@
 #include <hskylib/utils/commands/drive_commands.h>
 #include <hskylib/utils/utils.h>
 
+#include "hskylib/utils/color_reader.h"
+#include "hskylib/subsystems/cycler.h"
 #include "pros/adi.h"
 #include "pros/adi.hpp"
 #include "pros/motors.h"
 
 HskyController controller(pros::E_CONTROLLER_MASTER);
+
 std::queue<Command *> commandQueue;
 
 // ---------------------------------------------------------
@@ -64,6 +67,10 @@ pros::adi::DigitalOut hoodCylinder('a', true);
 pros::adi::DigitalOut wingCylinder('c');
 
 pros::Optical opticalSensor(15);
+HskyColorReader colorReader(15);  // Port 15 same as opticalSensor
+
+// Cycler for color-sorted intake/outtake
+Cycler cycler(colorReader);
 
 // //==================== SUBSYSTEMS ====================
 DrivebaseOdometry odom(&leftDriveMotors, &rightDriveMotors, robotConfig, &imu,
@@ -673,6 +680,43 @@ void constructTuningAuton() {
 	// 	new DriveDistance(driveBase, odom, robotConfig, 20.0, 1500));
 }
 
+void setupCycler() {
+	// Register intake transports
+	cycler.addIntakeTransport(&intake);
+
+	// Register outtake transports for INACTIVE mode
+	cycler.addOuttakeTransport(&upperScoring);
+	cycler.addOuttakeTransport(&lowerScoring);
+
+	// Register color-sorted outtake transports
+	cycler.addCorrectColorOuttakeTransport(&upperScoring);
+	cycler.addIncorrectColorOuttakeTransport(&lowerScoring);
+
+	// Initialize the color reader (starts background task)
+	colorReader.initialize();
+}
+
+void colorSortAwareOuttake() {
+	ColorSort sortMode = cycler.getColorSort();
+	int sortVal = static_cast<int>(sortMode);
+
+	if (sortVal == 0) {  // INACTIVE
+		// Normal mode: use the old logic
+		scoreLower();
+	} else {
+		// Color sort mode: check ball color and eject appropriately
+		ColorType color = colorReader.getColor();
+		int colorVal = static_cast<int>(color);
+		int wrongColorVal = (sortVal == 1) ? 0 : 1;  // RED=1, BLUE=0
+
+		if (colorVal == wrongColorVal) {
+			lowerScoring.moveOut();  // Eject wrong color from bottom
+		} else {
+			upperScoring.moveOut();  // Let correct color out the top
+		}
+	}
+}
+
 #ifdef PURPLE_ROBOT
 bool scraperToggle = false;
 bool wingToggle = false;
@@ -690,8 +734,24 @@ void opcontrolInit() {
 	controller.ButtonY.onPressed([]() { hood.retractPiston(); });
 	controller.ButtonY.onReleased([]() { hood.extendPiston(); });
 
-	// Score Lower
-	controller.ButtonL1.onPressed([]() { scoreLower(); });
+	// Color sort toggle
+	controller.ButtonX.onPressed([]() {
+		ColorSort current = cycler.getColorSort();
+		int currentVal = static_cast<int>(current);
+		ColorSort next;
+
+		if (currentVal == 0) {  // INACTIVE
+			next = static_cast<ColorSort>(1);  // RED
+		} else if (currentVal == 1) {  // RED
+			next = static_cast<ColorSort>(2);  // BLUE
+		} else {
+			next = static_cast<ColorSort>(0);  // INACTIVE
+		}
+		cycler.setColorSort(next);
+	});
+
+	// Score Lower - now color-sort aware
+	controller.ButtonL1.onPressed([]() { colorSortAwareOuttake(); });
 	controller.ButtonL1.onReleased([]() { stopAll(); });
 
 	// Score Upper
@@ -748,8 +808,24 @@ void opcontrolInit() {
 		scraper.retractPiston();
 	});
 
-	// Score Lower
-	controller.ButtonY.onPressed([]() { scoreLower(); });
+	// Color sort toggle
+	controller.ButtonLeft.onPressed([]() {
+		ColorSort current = cycler.getColorSort();
+		int currentVal = static_cast<int>(current);
+		ColorSort next;
+
+		if (currentVal == 0) {  // INACTIVE
+			next = static_cast<ColorSort>(1);  // RED
+		} else if (currentVal == 1) {  // RED
+			next = static_cast<ColorSort>(2);  // BLUE
+		} else {
+			next = static_cast<ColorSort>(0);  // INACTIVE
+		}
+		cycler.setColorSort(next);
+	});
+
+	// Score Lower - now color-sort aware
+	controller.ButtonY.onPressed([]() { colorSortAwareOuttake(); });
 	controller.ButtonY.onReleased([]() { stopAll(); });
 
 	// Hood
@@ -773,6 +849,7 @@ void opcontrolInit() {
 
 void robotInit() {
 	deviceInit();
+	setupCycler();
 
 	// constructTuningAuton();
 	if (autonType == 0) {
