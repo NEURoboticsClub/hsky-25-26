@@ -16,7 +16,7 @@ std::queue<Command *> commandQueue;
 // ---------------------------------------------------------
 // ##################### Configuration #####################
 // ---------------------------------------------------------
-#define ROBOT_1
+#define ROBOT_2
 #define BLUE
 
 //---------------------------------------------------
@@ -34,12 +34,12 @@ PIDController drivePid(0.1, 0.0, 0, PIDController::ERROR_TYPE::LINEAR);
 PIDController turnPid(53.0, 0, 90.0, PIDController::ERROR_TYPE::ANGULAR);
 PIDController headingPid(0.0, 0, 0.0, PIDController::ERROR_TYPE::ANGULAR);
 
-PIDController velocityLeftPid(2.0, 0.0, 0, PIDController::ERROR_TYPE::LINEAR);
-PIDController velocityRightPid(2.0, 0.0, 0,
+PIDController velocityLeftPid(3.0, 0.0, 0, PIDController::ERROR_TYPE::LINEAR);
+PIDController velocityRightPid(3.0, 0.0, 0,
 							   PIDController::ERROR_TYPE::LINEAR);
 
-FeedForward feedForwardLeft(5, 0.1, 0.001);
-FeedForward feedForwardRight(5, 0.1, 0.001);
+FeedForward feedForwardLeft(0, 0, 0);
+FeedForward feedForwardRight(0, 0, 0);
 
 robot_specs_t robotConfig{.driveWheelDiameter = 2.75,
 						  .trackWidth = 11.0,
@@ -101,17 +101,17 @@ bool isLeft = true;	 // TODO: Should be true
 
 //===================== CONFIG =====================
 
-PIDController drivePid(5.0, 0.0, 0.0, PIDController::ERROR_TYPE::LINEAR);
+PIDController drivePid(0, 0.0, 0.0, PIDController::ERROR_TYPE::LINEAR);
 // PIDController drivePid(0.15, 0.0, 0.05, PIDController::ERROR_TYPE::LINEAR);
 PIDController turnPid(50.0, 0.0, 0.0, PIDController::ERROR_TYPE::ANGULAR);
 PIDController headingPid(0.0, 0.0, 0.0, PIDController::ERROR_TYPE::ANGULAR);
 
-PIDController velocityLeftPid(0.0, 0.0, 0.0, PIDController::ERROR_TYPE::LINEAR);
-PIDController velocityRightPid(0.0, 0.0, 0.0,
+PIDController velocityLeftPid(3.5, 0.0, 0.0, PIDController::ERROR_TYPE::LINEAR);
+PIDController velocityRightPid(3.5, 0.0, 0.0,
 							   PIDController::ERROR_TYPE::LINEAR);
 
-FeedForward feedForwardLeft(0.0, 0.0, 0.0);
-FeedForward feedForwardRight(0.0, 0.0, 0.0);
+FeedForward feedForwardLeft(5.0, 3.0, 1.0);
+FeedForward feedForwardRight(5.0, 3.0, 1.0);
 
 robot_specs_t robotConfig{.driveWheelDiameter = 2.75,
 						  .trackWidth = 11.0,
@@ -128,8 +128,8 @@ robot_specs_t robotConfig{.driveWheelDiameter = 2.75,
 
 //===================== DEVICES =====================
 
-pros::MotorGroup leftDriveMotors({11, -12, 13, -14});
-pros::MotorGroup rightDriveMotors({17, -18, 19, -20});
+pros::MotorGroup leftDriveMotors({11, -12, 13});
+pros::MotorGroup rightDriveMotors({-18, 19, -20});
 
 pros::IMU imu(16);
 
