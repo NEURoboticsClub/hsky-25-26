@@ -170,6 +170,7 @@ int autonType = 2;
 void deviceInit() {
 	pros::delay(1000);	// Allow time for devices to initialize
 	odom.reset();
+	odom.init();
 	
 	if (!startPose.has_value()) {
 		throw std::runtime_error("startPose not set for autonomous routine");
