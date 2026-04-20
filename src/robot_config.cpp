@@ -53,20 +53,21 @@ robot_specs_t robotConfig{.driveWheelDiameter = 2.75,
 
 // //===================== DEVICES =====================
 
-pros::MotorGroup leftDriveMotors({-11, 12, -13, 14});
-pros::MotorGroup rightDriveMotors({17, -18, 19, -20});
+pros::MotorGroup leftDriveMotors({10, -9, 8, -7, 6});
+pros::MotorGroup rightDriveMotors({-1, 2, -3, 4, -5});
 
 pros::IMU imu(16);
 
-pros::MotorGroup intakeMotors({9});
-pros::MotorGroup lowerScoringMotors({-6});
-pros::MotorGroup upperScoringMotors({4});
+pros::MotorGroup intakeMotors({12, 13, 20});
+pros::MotorGroup scraperIntakeMotors({-17});
+pros::MotorGroup upperScoringMotors({18, -19});
 
-pros::adi::DigitalOut scraperCylinder('b');
-pros::adi::DigitalOut hoodCylinder('a', true);
+pros::adi::DigitalOut scraperCylinder('a');
+pros::adi::DigitalOut hoodCylinder('b');
 pros::adi::DigitalOut wingCylinder('c');
+pros::adi::DigitalOut flapCylinder('d');
 
-pros::Optical opticalSensor(15);
+pros::Optical opticalSensor(11);
 
 // //==================== SUBSYSTEMS ====================
 DrivebaseOdometry odom(&leftDriveMotors, &rightDriveMotors, robotConfig, &imu,
@@ -75,17 +76,18 @@ DrivebaseOdometry odom(&leftDriveMotors, &rightDriveMotors, robotConfig, &imu,
 TankDrive driveBase(leftDriveMotors, rightDriveMotors,
 					pros::E_MOTOR_BRAKE_COAST, pros::E_MOTOR_GEAR_600, 1.0,
 					0.75);
-Transport lowerScoring(lowerScoringMotors, 1, pros::E_MOTOR_BRAKE_COAST,
-					   pros::E_MOTOR_GEAR_600);
-Transport upperScoring(upperScoringMotors, 1, pros::E_MOTOR_BRAKE_COAST,
-					   pros::E_MOTOR_GEAR_600);
-
 Transport intake(intakeMotors, 1, pros::E_MOTOR_BRAKE_COAST,
-				 pros::E_MOTOR_GEAR_600);
+					  pros::E_MOTOR_GEAR_600);
+Transport scraperIntake(scraperIntakeMotors, 1, pros::E_MOTOR_BRAKE_COAST,
+                      pros::E_MOTOR_GEAR_600);
+Transport upperScoring(upperScoringMotors, 1, pros::E_MOTOR_BRAKE_COAST,
+                      pros::E_MOTOR_GEAR_600);
+
 
 Pneumatics scraper(scraperCylinder);
 Pneumatics hood(hoodCylinder);
 Pneumatics wing(wingCylinder);
+Pneumatics flap(flapCylinder);
 
 //---------------------------------------------------
 // ##################### Robot 2 #####################
@@ -111,41 +113,44 @@ robot_specs_t robotConfig{.driveWheelDiameter = 2.75,
 						  .drivePID = &drivePid,
 						  .headingPID = &headingPid,
 						  .turnPID = &turnPid};
-//===================== DEVICES =====================
 
-pros::MotorGroup leftDriveMotors({11, -12, 13, -14});
+// //===================== DEVICES =====================
+
+pros::MotorGroup leftDriveMotors({-11, 12, -13, 14});
 pros::MotorGroup rightDriveMotors({17, -18, 19, -20});
 
 pros::IMU imu(16);
 
 pros::MotorGroup intakeMotors({9});
-pros::MotorGroup lowerScoringMotors({-10});
-pros::MotorGroup upperScoringMotors({1});
+pros::MotorGroup scraperIntakeMotors({-6});
+pros::MotorGroup upperScoringMotors({4, 3});
 
-pros::adi::DigitalOut scraperCylinder('h');
-pros::adi::DigitalOut hoodCylinder('g');
-pros::adi::DigitalOut wingCylinder('f'); //f
+pros::adi::DigitalOut scraperCylinder('b');
+pros::adi::DigitalOut hoodCylinder('a');
+pros::adi::DigitalOut wingCylinder('c');
+pros::adi::DigitalOut flapCylinder('a');
 
+pros::Optical opticalSensor(15);
+
+// //==================== SUBSYSTEMS ====================
 DrivebaseOdometry odom(&leftDriveMotors, &rightDriveMotors, robotConfig, &imu,
 					   true);
-
-//==================== SUBSYSTEMS ====================
 
 TankDrive driveBase(leftDriveMotors, rightDriveMotors,
 					pros::E_MOTOR_BRAKE_COAST, pros::E_MOTOR_GEAR_600, 1.0,
 					0.75);
-Transport lowerScoring(lowerScoringMotors, 1, pros::E_MOTOR_BRAKE_COAST,
-					   pros::E_MOTOR_GEAR_600);
-Transport upperScoring(upperScoringMotors, 1, pros::E_MOTOR_BRAKE_COAST,
-					   pros::E_MOTOR_GEAR_600);
-
 Transport intake(intakeMotors, 1, pros::E_MOTOR_BRAKE_COAST,
-				 pros::E_MOTOR_GEAR_600);
+					  pros::E_MOTOR_GEAR_600);
+Transport scraperIntake(scraperIntakeMotors, 1, pros::E_MOTOR_BRAKE_COAST,
+                      pros::E_MOTOR_GEAR_600);
+Transport upperScoring(upperScoringMotors, 1, pros::E_MOTOR_BRAKE_COAST,
+                      pros::E_MOTOR_GEAR_600);
+
 
 Pneumatics scraper(scraperCylinder);
 Pneumatics hood(hoodCylinder);
 Pneumatics wing(wingCylinder);
-pros::Optical opticalSensor(15);
+Pneumatics flap(flapCylinder);
 
 #endif
 
@@ -186,19 +191,19 @@ void deviceInit() {
 void scoreLong() {
 	hood.extendPiston();
 	upperScoring.moveIn();
-	lowerScoring.moveIn();
+	scraperIntake.moveIn();
 	intake.moveIn();
 }
 
 void scoreUpper() {
 	upperScoring.moveOut(60);
-	lowerScoring.moveIn();
+	scraperIntake.moveIn();
 	intake.moveIn();
 }
 
 void scoreLower() {
 	upperScoring.moveOut();
-	lowerScoring.moveOut(0);
+	scraperIntake.moveOut(0);
 	intake.moveOut(60);
 }
 
@@ -206,14 +211,14 @@ void matchLoad() {
 	hood.retractPiston();
 	scraper.extendPiston();
 	upperScoring.moveIn();
-	lowerScoring.moveIn();
+	scraperIntake.moveIn();
 	intake.moveIn();
 }
 
 void intakeField() {
 	hood.retractPiston();
 	upperScoring.moveIn();
-	lowerScoring.moveIn();
+	scraperIntake.moveIn();
 	intake.moveIn();
 }
 
@@ -221,13 +226,13 @@ void intakeLoader() {
 	hood.retractPiston();
 	scraper.extendPiston();
 	upperScoring.moveIn();
-	lowerScoring.moveIn();
+	scraperIntake.moveIn();
 	intake.moveIn();
 }
 
 void stopAll() {
 	upperScoring.stop();
-	lowerScoring.stop();
+	scraperIntake.stop();
 	intake.stop();
 }
 
@@ -689,6 +694,50 @@ void constructTuningAuton() {
 }
 
 #ifdef PURPLE_ROBOT
+bool wingToggle = false;
+
+void opcontrolInit() {
+	// Score Upper
+	controller.ButtonR1.onHold([]() { scoreUpper(); });
+	controller.ButtonR1.onReleased([]() { stopAll(); });
+
+	// Score Long
+	controller.ButtonR2.onPressed([]() { scoreLong(); });
+	controller.ButtonR2.onReleased([]() { stopAll(); });
+
+	// Intake
+	controller.ButtonL1.onPressed([]() { intakeField(); });
+	controller.ButtonL1.onReleased([]() { stopAll(); });
+
+	// Intake
+	controller.ButtonL2.onPressed([]() { intakeLoader(); });
+	controller.ButtonL2.onReleased([]() {
+		stopAll();
+		scraper.retractPiston();
+	});
+
+	// Score Lower
+	controller.ButtonY.onPressed([]() { scoreLower(); });
+	controller.ButtonY.onReleased([]() { stopAll(); });
+
+	// Hood
+	controller.ButtonX.onPressed([]() { hood.extendPiston(); });
+	controller.ButtonX.onReleased([]() { hood.retractPiston(); });
+
+	// Wing
+	controller.ButtonRight.onPressed([]() {
+		wingToggle = !wingToggle;
+		if (wingToggle) {
+			wing.extendPiston();
+		} else {
+			wing.retractPiston();
+		}
+	});
+
+	stopAll();
+}
+
+#elifdef RED_ROBOT
 bool scraperToggle = false;
 bool wingToggle = false;
 
@@ -726,50 +775,6 @@ void opcontrolInit() {
 			scraper.retractPiston();
 		}
 	});
-
-	// Wing
-	controller.ButtonRight.onPressed([]() {
-		wingToggle = !wingToggle;
-		if (wingToggle) {
-			wing.extendPiston();
-		} else {
-			wing.retractPiston();
-		}
-	});
-
-	stopAll();
-}
-
-#elifdef RED_ROBOT
-bool wingToggle = false;
-
-void opcontrolInit() {
-	// Score Upper
-	controller.ButtonR1.onHold([]() { scoreUpper(); });
-	controller.ButtonR1.onReleased([]() { stopAll(); });
-
-	// Score Long
-	controller.ButtonR2.onPressed([]() { scoreLong(); });
-	controller.ButtonR2.onReleased([]() { stopAll(); });
-
-	// Intake
-	controller.ButtonL1.onPressed([]() { intakeField(); });
-	controller.ButtonL1.onReleased([]() { stopAll(); });
-
-	// Intake
-	controller.ButtonL2.onPressed([]() { intakeLoader(); });
-	controller.ButtonL2.onReleased([]() {
-		stopAll();
-		scraper.retractPiston();
-	});
-
-	// Score Lower
-	controller.ButtonY.onPressed([]() { scoreLower(); });
-	controller.ButtonY.onReleased([]() { stopAll(); });
-
-	// Hood
-	controller.ButtonX.onPressed([]() { hood.extendPiston(); });
-	controller.ButtonX.onReleased([]() { hood.retractPiston(); });
 
 	// Wing
 	controller.ButtonRight.onPressed([]() {
