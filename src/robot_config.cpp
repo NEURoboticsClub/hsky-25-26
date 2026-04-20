@@ -33,18 +33,13 @@ bool isPurpleRobot = true;
 
 // //===================== CONFIG =====================
 
-PIDController drivePid(7.0, 0.0, 0, PIDController::ERROR_TYPE::LINEAR);
-// PIDController drivePid(0.15, 0.0, 0.05, PIDController::ERROR_TYPE::LINEAR);
-// PIDController turnPid(53.0, 0.67, 115.0, PIDController::ERROR_TYPE::ANGULAR);
-// PIDController turnPid(130.0, 10, 90.0, PIDController::ERROR_TYPE::ANGULAR);
-// PIDController turnPid(70.0, 0.0, 0.0, PIDController::ERROR_TYPE::ANGULAR);
-PIDController turnPid(120, 0, 10, PIDController::ERROR_TYPE::ANGULAR);
-PIDController headingPid(50.0, 0, 0.0, PIDController::ERROR_TYPE::ANGULAR);
+PIDFController drivePid(7.0, 0.0, 0, 0, PIDFController::ERROR_TYPE::LINEAR);
+PIDFController turnPid(120, 0, 10, 0, PIDFController::ERROR_TYPE::ANGULAR);
+PIDFController headingPid(50.0, 0, 0.0, 0, PIDFController::ERROR_TYPE::ANGULAR);
 
 robot_specs_t robotConfig{.driveWheelDiameter = 2.75,
 						  .trackWidth = 11.0,
 						  .odomPodDiameter = 0.0,
-						//   .maxDrivePct = 33,
 						  .maxDrivePct = 45,
 						  .maxTurnPct = 100,
 						  .drivePID = &drivePid,
@@ -96,12 +91,9 @@ bool isPurpleRobot = false;
 
 //===================== CONFIG =====================
 
-PIDController drivePid(5.0, 0.0, 0, PIDController::ERROR_TYPE::LINEAR);
-// PIDController drivePid(0.15, 0.0, 0.05, PIDController::ERROR_TYPE::LINEAR);
-// PIDController turnPid(80.0, 0.0 , 0.0, PIDController::ERROR_TYPE::ANGULAR);
-PIDController turnPid(131, 0, 2, PIDController::ERROR_TYPE::ANGULAR);
-PIDController headingPid(100.0, 0.0, 0.0, PIDController::ERROR_TYPE::ANGULAR);
-// PIDController headingPid(60.0, 0.0, 0.0, PIDController::ERROR_TYPE::ANGULAR);
+PIDFController drivePid(5.0, 0.0, 0, 0, PIDFController::ERROR_TYPE::LINEAR);
+PIDFController turnPid(131, 0, 2, 0, PIDFController::ERROR_TYPE::ANGULAR);
+PIDFController headingPid(100.0, 0.0, 0.0, 0, PIDFController::ERROR_TYPE::ANGULAR);
 
 robot_specs_t robotConfig{.driveWheelDiameter = 2.75,
 						  .trackWidth = 11.0,
