@@ -15,13 +15,16 @@
 HskyController controller(pros::E_CONTROLLER_MASTER);
 
 std::queue<Command *> commandQueue;
+std::optional<pose_t> startPose;
+bool isAutonomousRunning = false;
+pros::Task* failsafeTask = nullptr;
 
 // ---------------------------------------------------------
 // ##################### Configuration #####################
 // ---------------------------------------------------------
 // Red starts on the left, Purple starts on the right
-#define PURPLE_ROBOT // RED_ROBOT, PURPLE_ROBOT
-#define SKILLS // MATCH, SKILLS, AWP
+#define RED_ROBOT // RED_ROBOT, PURPLE_ROBOT
+#define MATCH // MATCH, SKILLS, AWP
 #define RED // RED, BLUE
 
 //---------------------------------------------------
@@ -53,21 +56,22 @@ robot_specs_t robotConfig{.driveWheelDiameter = 2.75,
 
 // //===================== DEVICES =====================
 
-pros::MotorGroup leftDriveMotors({-11, 12, -13, 14});
-pros::MotorGroup rightDriveMotors({17, -18, 19, -20});
+pros::MotorGroup leftDriveMotors({10, -9, 8, -7, 6});
+pros::MotorGroup rightDriveMotors({-1, 2, -3, 4, -5});
 
 pros::IMU imu(16);
 
-pros::MotorGroup intakeMotors({9});
-pros::MotorGroup lowerScoringMotors({-6});
-pros::MotorGroup upperScoringMotors({4});
+pros::MotorGroup intakeMotors({12, 13, 20}); // 12 doesn't work currently
+pros::MotorGroup scraperIntakeMotors({-17});
+pros::MotorGroup upperScoringMotors({18, -19});
 
-pros::adi::DigitalOut scraperCylinder('b');
-pros::adi::DigitalOut hoodCylinder('a', true);
+pros::adi::DigitalOut scraperCylinder('a');
+pros::adi::DigitalOut hoodCylinder('b');
 pros::adi::DigitalOut wingCylinder('c');
+pros::adi::DigitalOut flapCylinder('d');
 
-pros::Optical opticalSensor(15);
-HskyColorReader colorReader(15);  // Port 15 same as opticalSensor
+pros::Optical opticalSensor(21);
+HskyColorReader colorReader(21);  // Port 21 same as opticalSensor
 
 // Cycler for color-sorted intake/outtake
 Cycler cycler(colorReader);
@@ -79,17 +83,18 @@ DrivebaseOdometry odom(&leftDriveMotors, &rightDriveMotors, robotConfig, &imu,
 TankDrive driveBase(leftDriveMotors, rightDriveMotors,
 					pros::E_MOTOR_BRAKE_COAST, pros::E_MOTOR_GEAR_600, 1.0,
 					0.75);
-Transport lowerScoring(lowerScoringMotors, 1, pros::E_MOTOR_BRAKE_COAST,
-					   pros::E_MOTOR_GEAR_600);
-Transport upperScoring(upperScoringMotors, 1, pros::E_MOTOR_BRAKE_COAST,
-					   pros::E_MOTOR_GEAR_600);
-
 Transport intake(intakeMotors, 1, pros::E_MOTOR_BRAKE_COAST,
-				 pros::E_MOTOR_GEAR_600);
+					  pros::E_MOTOR_GEAR_600);
+Transport scraperIntake(scraperIntakeMotors, 1, pros::E_MOTOR_BRAKE_COAST,
+                      pros::E_MOTOR_GEAR_600);
+Transport upperScoring(upperScoringMotors, 1, pros::E_MOTOR_BRAKE_COAST,
+                      pros::E_MOTOR_GEAR_600);
+
 
 Pneumatics scraper(scraperCylinder);
 Pneumatics hood(hoodCylinder);
 Pneumatics wing(wingCylinder);
+Pneumatics flap(flapCylinder);
 
 //---------------------------------------------------
 // ##################### Robot 2 #####################
@@ -123,33 +128,35 @@ pros::MotorGroup rightDriveMotors({17, -18, 19, -20});
 pros::IMU imu(16);
 
 pros::MotorGroup intakeMotors({9});
-pros::MotorGroup lowerScoringMotors({-10});
-pros::MotorGroup upperScoringMotors({1});
+pros::MotorGroup scraperIntakeMotors({-6});
+pros::MotorGroup upperScoringMotors({4, 3});
 
-pros::adi::DigitalOut scraperCylinder('h');
-pros::adi::DigitalOut hoodCylinder('g');
-pros::adi::DigitalOut wingCylinder('f'); //f
+pros::adi::DigitalOut scraperCylinder('b');
+pros::adi::DigitalOut hoodCylinder('a');
+pros::adi::DigitalOut wingCylinder('c');
+pros::adi::DigitalOut flapCylinder('a');
 
+pros::Optical opticalSensor(15);
+
+// //==================== SUBSYSTEMS ====================
 DrivebaseOdometry odom(&leftDriveMotors, &rightDriveMotors, robotConfig, &imu,
 					   true);
-
-//==================== SUBSYSTEMS ====================
 
 TankDrive driveBase(leftDriveMotors, rightDriveMotors,
 					pros::E_MOTOR_BRAKE_COAST, pros::E_MOTOR_GEAR_600, 1.0,
 					0.75);
-Transport lowerScoring(lowerScoringMotors, 1, pros::E_MOTOR_BRAKE_COAST,
-					   pros::E_MOTOR_GEAR_600);
-Transport upperScoring(upperScoringMotors, 1, pros::E_MOTOR_BRAKE_COAST,
-					   pros::E_MOTOR_GEAR_600);
-
 Transport intake(intakeMotors, 1, pros::E_MOTOR_BRAKE_COAST,
-				 pros::E_MOTOR_GEAR_600);
+					  pros::E_MOTOR_GEAR_600);
+Transport scraperIntake(scraperIntakeMotors, 1, pros::E_MOTOR_BRAKE_COAST,
+                      pros::E_MOTOR_GEAR_600);
+Transport upperScoring(upperScoringMotors, 1, pros::E_MOTOR_BRAKE_COAST,
+                      pros::E_MOTOR_GEAR_600);
+
 
 Pneumatics scraper(scraperCylinder);
 Pneumatics hood(hoodCylinder);
 Pneumatics wing(wingCylinder);
-pros::Optical opticalSensor(15);
+Pneumatics flap(flapCylinder);
 
 #endif
 
@@ -175,28 +182,34 @@ void deviceInit() {
 	pros::delay(1000);	// Allow time for devices to initialize
 	odom.reset();
 	odom.init();
+	
+	if (!startPose.has_value()) {
+		throw std::runtime_error("startPose not set for autonomous routine");
+	}
+	odom.setPose(startPose.value());
 
 	imu.reset();
 	while (imu.is_calibrating() || !std::isfinite(imu.get_heading())) {
 		pros::delay(20);
 	}
 }
+
 void scoreLong() {
 	hood.extendPiston();
 	upperScoring.moveIn();
-	lowerScoring.moveIn();
+	scraperIntake.moveIn();
 	intake.moveIn();
 }
 
 void scoreUpper() {
 	upperScoring.moveOut(60);
-	lowerScoring.moveIn();
+	scraperIntake.moveIn();
 	intake.moveIn();
 }
 
 void scoreLower() {
 	upperScoring.moveOut();
-	lowerScoring.moveOut(0);
+	scraperIntake.moveOut(0);
 	intake.moveOut(60);
 }
 
@@ -204,14 +217,14 @@ void matchLoad() {
 	hood.retractPiston();
 	scraper.extendPiston();
 	upperScoring.moveIn();
-	lowerScoring.moveIn();
+	scraperIntake.moveIn();
 	intake.moveIn();
 }
 
 void intakeField() {
 	hood.retractPiston();
 	upperScoring.moveIn();
-	lowerScoring.moveIn();
+	scraperIntake.moveIn();
 	intake.moveIn();
 }
 
@@ -219,13 +232,13 @@ void intakeLoader() {
 	hood.retractPiston();
 	scraper.extendPiston();
 	upperScoring.moveIn();
-	lowerScoring.moveIn();
+	scraperIntake.moveIn();
 	intake.moveIn();
 }
 
 void stopAll() {
 	upperScoring.stop();
-	lowerScoring.stop();
+	scraperIntake.stop();
 	intake.stop();
 }
 
@@ -279,6 +292,7 @@ void queueScoreLongCut() {
 }
 
 void constructRedMatchAuton(bool isRed) {
+	startPose = pose_t(0, 0, 0 * std::numbers::pi / 180.0);
 	const int LOADER_DEAD_RECKON_TIME = 3100;
 	const int LOADER_DEAD_RECKON_SPEED = 40;
 
@@ -327,6 +341,7 @@ void constructRedMatchAuton(bool isRed) {
 }
 
 void constructPurpleMatchAuton(bool isRed) {
+	startPose = pose_t(0, 0, 0 * std::numbers::pi / 180.0);
 	const int LOADER_DEAD_RECKON_TIME = 3100;
 	const int LOADER_DEAD_RECKON_SPEED = 40;
 
@@ -377,6 +392,7 @@ void constructPurpleMatchAuton(bool isRed) {
 void constructRedAWPAuton(bool isRed) {}
 
 void constructPurpleAWPAuton(bool isRed) {
+	startPose = pose_t(0, 0, 0 * std::numbers::pi / 180.0);
 	const int LOADER_DEAD_RECKON_TIME = 2800;
 	const int LOADER_DEAD_RECKON_SPEED = 40;
 
@@ -437,7 +453,7 @@ void constructPurpleAWPAuton(bool isRed) {
 }
 
 void constructPurpleSkillsAuton() {
-	// const int LOADER_DEAD_RECKON_TIME = 2800;
+	startPose = pose_t(0, 0, 0 * std::numbers::pi / 180.0);
 	const int LOADER_DEAD_RECKON_TIME = 3100;
 	const int LOADER_DEAD_RECKON_SPEED = 40;
 	const int SCORE_LONG_TIME = 1500;
@@ -552,6 +568,7 @@ void constructPurpleSkillsAuton() {
 }
 
 void constructRedSkillsAuton() {
+	startPose = pose_t(0, 0, 0 * std::numbers::pi / 180.0);
 	const int LOADER_DEAD_RECKON_TIME = 3100;
 	const int LOADER_DEAD_RECKON_SPEED = 40;
 	const int SCORE_LONG_TIME = 1500;
@@ -654,9 +671,11 @@ void constructRedSkillsAuton() {
 }
 
 void constructTuningAuton() {
+	startPose = pose_t(0, 8, 90 * std::numbers::pi / 180.0);
 	commandQueue.push(new InstantCommand([&]() { imu.tare(); }));
-	// commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, 48.0,
-	// 5500)); commandQueue.push(new TimeoutCommand(3000));
+	commandQueue.push(new DriveDeadReckon(driveBase, 20, 20, 100000));
+	// commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, 48.0, 5500)); 
+	commandQueue.push(new TimeoutCommand(100000));
 	// commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, -48.0,
 	// 5500));
 
@@ -667,14 +686,14 @@ void constructTuningAuton() {
 	// commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, -10.0, 99999));
 	// commandQueue.push(new TurnToHeading())
 	// for (int i = 0; i < 4; i++) {
-	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 45, 1250));
-	commandQueue.push(new TimeoutCommand(1000));
-	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 0, 1250));
-	commandQueue.push(new TimeoutCommand(1000));
-	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 90, 1250));
-	commandQueue.push(new TimeoutCommand(1000));
-	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 0, 1250));
-	commandQueue.push(new TimeoutCommand(1000));
+	// commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 45, 1250));
+	// commandQueue.push(new TimeoutCommand(1000));
+	// commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 0, 1250));
+	// commandQueue.push(new TimeoutCommand(1000));
+	// commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 90, 1250));
+	// commandQueue.push(new TimeoutCommand(1000));
+	// commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 0, 1250));
+	// commandQueue.push(new TimeoutCommand(1000));
 	// }
 	// commandQueue.push(
 	// 	new DriveDistance(driveBase, odom, robotConfig, 20.0, 1500));
@@ -718,6 +737,50 @@ void colorSortAwareOuttake() {
 }
 
 #ifdef PURPLE_ROBOT
+bool wingToggle = false;
+
+void opcontrolInit() {
+	// Score Upper
+	controller.ButtonR1.onHold([]() { scoreUpper(); });
+	controller.ButtonR1.onReleased([]() { stopAll(); });
+
+	// Score Long
+	controller.ButtonR2.onPressed([]() { scoreLong(); });
+	controller.ButtonR2.onReleased([]() { stopAll(); });
+
+	// Intake
+	controller.ButtonL1.onPressed([]() { intakeField(); });
+	controller.ButtonL1.onReleased([]() { stopAll(); });
+
+	// Intake
+	controller.ButtonL2.onPressed([]() { intakeLoader(); });
+	controller.ButtonL2.onReleased([]() {
+		stopAll();
+		scraper.retractPiston();
+	});
+
+	// Score Lower
+	controller.ButtonY.onPressed([]() { scoreLower(); });
+	controller.ButtonY.onReleased([]() { stopAll(); });
+
+	// Hood
+	controller.ButtonX.onPressed([]() { hood.extendPiston(); });
+	controller.ButtonX.onReleased([]() { hood.retractPiston(); });
+
+	// Wing
+	controller.ButtonRight.onPressed([]() {
+		wingToggle = !wingToggle;
+		if (wingToggle) {
+			wing.extendPiston();
+		} else {
+			wing.retractPiston();
+		}
+	});
+
+	stopAll();
+}
+
+#elifdef RED_ROBOT
 bool scraperToggle = false;
 bool wingToggle = false;
 
@@ -852,6 +915,7 @@ void robotInit() {
 	setupCycler();
 
 	// constructTuningAuton();
+
 	if (autonType == 0) {
 		if (isPurpleRobot) {
 			constructPurpleMatchAuton(isRedTeam);
@@ -871,4 +935,6 @@ void robotInit() {
 			constructRedAWPAuton(isRedTeam);
 		}
 	}
+
+	deviceInit();
 }

@@ -1,7 +1,9 @@
 #ifndef ROBOT_CONFIG_HPP
 #define ROBOT_CONFIG_HPP
 
+#include <hskylib/utils/pose.h>
 #include <vector>
+#include <optional>
 
 #include "api.h"
 #include "hskylib.h"
@@ -16,8 +18,11 @@ extern Pneumatics hood;
 extern DrivebaseOdometry odom;
 extern pros::IMU imu;
 extern std::queue<Command *> commandQueue;
-
-void opcontrolInit();
+extern std::optional<pose_t> startPose;
+extern bool isAutonomousRunning;
+extern pros::Task* failsafeTask;
+extern int autonType;
 void robotInit();
+void opcontrolInit();
 
 #endif
