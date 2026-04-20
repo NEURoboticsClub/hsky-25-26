@@ -58,7 +58,7 @@ pros::MotorGroup rightDriveMotors({-1, 2, -3, 4, -5});
 
 pros::IMU imu(16);
 
-pros::MotorGroup intakeMotors({12, 13, 20});
+pros::MotorGroup intakeMotors({12, 13, 20}); // 12 doesn't work currently
 pros::MotorGroup scraperIntakeMotors({-17});
 pros::MotorGroup upperScoringMotors({18, -19});
 
@@ -67,7 +67,7 @@ pros::adi::DigitalOut hoodCylinder('b');
 pros::adi::DigitalOut wingCylinder('c');
 pros::adi::DigitalOut flapCylinder('d');
 
-pros::Optical opticalSensor(11);
+pros::Optical opticalSensor(21);
 
 // //==================== SUBSYSTEMS ====================
 DrivebaseOdometry odom(&leftDriveMotors, &rightDriveMotors, robotConfig, &imu,
