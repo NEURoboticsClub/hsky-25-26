@@ -12,7 +12,11 @@
  * All other competition modes are blocked by initialize; it is recommended
  * to keep execution time for this mode under a few seconds.
  */
-void initialize() { robotInit(); }
+void initialize() {
+	robotInit();
+	controller.initialize();
+	autonSelectorInit();
+}
 
 /**
  * Runs while the robot is in the disabled state of Field Management System or
@@ -30,7 +34,9 @@ void disabled() {}
  * This task will exit when the robot is enabled and autonomous or opcontrol
  * starts.
  */
-void competition_initialize() {}
+void competition_initialize() {
+	autonSelectorRun();
+}
 
 /**
  * Runs the user autonomous code. This function will be started in its own task
@@ -44,6 +50,7 @@ void competition_initialize() {}
  * from where it left off.
  */
 void autonomous() {
+	populateAutonQueue();
 	CommandRunner commandRunner(commandQueue);
 	commandRunner.run();
 }
@@ -63,10 +70,6 @@ void autonomous() {
  */
 void opcontrol() {
 	opcontrolInit();
-
-	controller.initialize();
-
-
 	while (true) {
 		driveBase.arcadeDrive(controller.AxisLeftY.position(), controller.AxisRightX.position());
 		pros::delay(20);

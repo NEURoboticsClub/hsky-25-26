@@ -2,6 +2,7 @@
 
 #include <hskylib/robot_specs.h>
 #include <hskylib/subsystems/pneumatics.h>
+#include <hskylib/ui/auton_selector.h>
 #include <hskylib/utils/commands/base_commands.h>
 #include <hskylib/utils/commands/drive_commands.h>
 #include <hskylib/utils/utils.h>
@@ -771,27 +772,64 @@ void opcontrolInit() {
 
 #endif
 
-void robotInit() {
-	deviceInit();
+AutonSelector selector;
 
-	// constructTuningAuton();
-	if (autonType == 0) {
-		if (isPurpleRobot) {
-			constructPurpleMatchAuton(isRedTeam);
+void autonSelectorInit() {
+	// Set default for quick testing - change this line as needed
+	selector.setDefault(3, AllianceColor::RED_ALLIANCE, StartingSide::LEFT);
+
+	selector.registerAuton(0, "Match", [](std::queue<Command *> &q,
+										  AllianceColor color,
+										  StartingSide side) {
+		bool isRed = (color == AllianceColor::RED_ALLIANCE);
+		if (side == StartingSide::RIGHT) {
+			constructPurpleMatchAuton(isRed);
 		} else {
-			constructRedMatchAuton(isRedTeam);
+			constructRedMatchAuton(isRed);
 		}
-	} else if (autonType == 1) {
-		if (isPurpleRobot) {
+	});
+
+	selector.registerAuton(1, "Skills", [](std::queue<Command *> &q,
+										   AllianceColor color,
+										   StartingSide side) {
+		if (side == StartingSide::RIGHT) {
 			constructPurpleSkillsAuton();
 		} else {
 			constructRedSkillsAuton();
 		}
-	} else {
-		if (isPurpleRobot) {
-			constructPurpleAWPAuton(isRedTeam);
+	});
+
+	selector.registerAuton(2, "AWP", [](std::queue<Command *> &q,
+										AllianceColor color,
+										StartingSide side) {
+		bool isRed = (color == AllianceColor::RED_ALLIANCE);
+		if (side == StartingSide::RIGHT) {
+			constructPurpleAWPAuton(isRed);
 		} else {
-			constructRedAWPAuton(isRedTeam);
+			constructRedAWPAuton(isRed);
 		}
-	}
+	});
+
+	selector.registerAuton(3, "Test", [](std::queue<Command *> &q,
+										 AllianceColor color,
+										 StartingSide side) {
+		commandQueue.push(new InstantCommand([&]() { imu.tare(); }));
+		commandQueue.push(
+			new DriveDistance(driveBase, odom, robotConfig, 24.0, 2000));
+		commandQueue.push(
+			new TurnToHeading(driveBase, odom, robotConfig, 90.0, 1500));
+	});
+
+}
+
+void autonSelectorRun() {
+	selector.run();
+}
+
+void populateAutonQueue() {
+	selector.populateCommandQueue(commandQueue);
+}
+
+void robotInit() {
+	deviceInit();
 }
