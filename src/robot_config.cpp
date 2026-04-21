@@ -1,5 +1,6 @@
 #include "robot_config.hpp"
 
+#include <cstdio>
 #include <hskylib/robot_specs.h>
 #include <hskylib/subsystems/pneumatics.h>
 #include <hskylib/utils/commands/base_commands.h>
@@ -23,7 +24,7 @@ pros::Task* failsafeTask = nullptr;
 // ##################### Configuration #####################
 // ---------------------------------------------------------
 // Red starts on the left, Purple starts on the right
-#define RED_ROBOT // RED_ROBOT, PURPLE_ROBOT
+#define PURPLE_ROBOT // RED_ROBOT, PURPLE_ROBOT
 #define MATCH // MATCH, SKILLS, AWP
 #define RED // RED, BLUE
 
@@ -59,11 +60,11 @@ robot_specs_t robotConfig{.driveWheelDiameter = 2.75,
 pros::MotorGroup leftDriveMotors({10, -9, 8, -7, 6});
 pros::MotorGroup rightDriveMotors({-1, 2, -3, 4, -5});
 
-pros::IMU imu(16);
+pros::IMU imu(15);
 
-pros::MotorGroup intakeMotors({12, 13, 20}); // 12 doesn't work currently
+pros::MotorGroup intakeMotors({12, 13, -20}); // 12 doesn't work currently
 pros::MotorGroup scraperIntakeMotors({-17});
-pros::MotorGroup upperScoringMotors({18, -19});
+pros::MotorGroup upperScoringMotors({-18, 19}); // 18 is fried
 
 pros::adi::DigitalOut scraperCylinder('a');
 pros::adi::DigitalOut hoodCylinder('b');
@@ -190,57 +191,127 @@ void deviceInit() {
 
 	imu.reset();
 	while (imu.is_calibrating() || !std::isfinite(imu.get_heading())) {
+		printf("Calibrating IMU");
 		pros::delay(20);
 	}
 }
 
 void scoreLong() {
-	hood.extendPiston();
-	upperScoring.moveIn();
-	scraperIntake.moveIn();
-	intake.moveIn();
+   hood.extendPiston();
+   flap.extendPiston();
+   upperScoring.moveOut();
+   intake.moveIn();
+   scraperIntake.moveIn();
 }
+
 
 void scoreUpper() {
-	upperScoring.moveOut(60);
-	scraperIntake.moveIn();
-	intake.moveIn();
+   hood.retractPiston();
+   flap.extendPiston();
+   upperScoring.moveOut();//60
+   intake.moveIn();
+   scraperIntake.moveIn();
 }
+
 
 void scoreLower() {
-	upperScoring.moveOut();
-	scraperIntake.moveOut(0);
-	intake.moveOut(60);
+   scraper.retractPiston();
+   upperScoring.moveIn();
+   intake.moveOut();
+//    scraperIntake.moveOut();
 }
 
-void matchLoad() {
-	hood.retractPiston();
-	scraper.extendPiston();
-	upperScoring.moveIn();
-	scraperIntake.moveIn();
-	intake.moveIn();
+void colorSortAwareIntake() {
 }
 
-void intakeField() {
-	hood.retractPiston();
-	upperScoring.moveIn();
-	scraperIntake.moveIn();
-	intake.moveIn();
+void colorSortAwareOuttake() {
+	ColorSort sortMode = cycler.getColorSort();
+	int sortVal = static_cast<int>(sortMode);
+
+	if (sortVal == 0) {  // INACTIVE
+		// Normal mode: use the old logic
+		scoreLower();
+	} else {
+		// Color sort mode: check ball color and eject appropriately
+		ColorType color = colorReader.getColor();
+		int colorVal = static_cast<int>(color);
+		int wrongColorVal = (sortVal == 1) ? 0 : 1;  // RED=1, BLUE=0
+
+		// if (colorVal == wrongColorVal) {
+		// 	scraperIntake.moveOut();  // Eject wrong color from bottom
+		// } else {
+		// 	scraperIntake.moveIn();  // Let correct color out the top
+		// 	upperScoring.moveOut();
+		// }
+	}
 }
 
 void intakeLoader() {
-	hood.retractPiston();
+	flap.retractPiston();
+	upperScoring.moveOut();
 	scraper.extendPiston();
-	upperScoring.moveIn();
-	scraperIntake.moveIn();
-	intake.moveIn();
+	scraperIntake.moveIn(50);
+
+	ColorType color = colorReader.getColor(); // RED = 1, BLUE = 0, OTHER = -1
+	ColorSort sortMode = cycler.getColorSort(); // INACTIVE=0, RED=1, BLUE=2
+
+	int colorVal = static_cast<int>(color);
+	int sortVal = static_cast<int>(sortMode);
+
+	int wrongColorVal = (sortVal == 1) ? 0 : 1;
+
+	printf("Intake Color: %d, Sort Mode: %d\n", colorVal, sortVal);
+	if (colorVal == wrongColorVal) {
+		cycler.resetTimer();
+	}
+
+
+	if (sortVal == 0 || cycler.getElapsedTime() > 1000) {  // INACTIVE or timer expired
+		// Normal mode: use the old logic
+		intake.moveIn();
+	} else {
+		intake.moveOut();
+		printf("Ejecting wrong color ball\n");
+	}
 }
 
-void stopAll() {
-	upperScoring.stop();
-	scraperIntake.stop();
-	intake.stop();
+
+void intakeField() {
+	flap.retractPiston();
+	upperScoring.moveOut();
+	intake.moveIn(75);
+
+	ColorType color = colorReader.getColor(); // RED = 1, BLUE = 0, OTHER = -1
+	ColorSort sortMode = cycler.getColorSort(); // INACTIVE=0, RED=1, BLUE=2
+
+	int colorVal = static_cast<int>(color);
+	int sortVal = static_cast<int>(sortMode);
+
+	int wrongColorVal = (sortVal == 1) ? 0 : 1;
+
+	printf("Intake Color: %d, Sort Mode: %d\n", colorVal, sortVal);
+	if (colorVal == wrongColorVal) {
+		cycler.resetTimer();
+	}
+
+
+	if (sortVal == 0 || cycler.getElapsedTime() > 50) {  // INACTIVE or timer expired
+		// Normal mode: use the old logic
+		scraperIntake.moveIn(60);
+	} else {
+		scraperIntake.moveOut();
+		printf("Ejecting wrong color ball\n");
+	}
 }
+
+
+void stopAll() {
+   scraperIntake.moveIn();
+   upperScoring.stop();
+   scraperIntake.stop();
+   intake.stop();
+}
+
 
 
 void queueWiggleIntake(double distance = 5.0, int times = 2) {
@@ -705,41 +776,21 @@ void setupCycler() {
 
 	// Register outtake transports for INACTIVE mode
 	cycler.addOuttakeTransport(&upperScoring);
-	cycler.addOuttakeTransport(&lowerScoring);
+	cycler.addOuttakeTransport(&scraperIntake);
 
 	// Register color-sorted outtake transports
 	cycler.addCorrectColorOuttakeTransport(&upperScoring);
-	cycler.addIncorrectColorOuttakeTransport(&lowerScoring);
+	cycler.addIncorrectColorOuttakeTransport(&scraperIntake);
 
 	// Initialize the color reader (starts background task)
 	colorReader.initialize();
-}
-
-void colorSortAwareOuttake() {
-	ColorSort sortMode = cycler.getColorSort();
-	int sortVal = static_cast<int>(sortMode);
-
-	if (sortVal == 0) {  // INACTIVE
-		// Normal mode: use the old logic
-		scoreLower();
-	} else {
-		// Color sort mode: check ball color and eject appropriately
-		ColorType color = colorReader.getColor();
-		int colorVal = static_cast<int>(color);
-		int wrongColorVal = (sortVal == 1) ? 0 : 1;  // RED=1, BLUE=0
-
-		if (colorVal == wrongColorVal) {
-			lowerScoring.moveOut();  // Eject wrong color from bottom
-		} else {
-			upperScoring.moveOut();  // Let correct color out the top
-		}
-	}
 }
 
 #ifdef PURPLE_ROBOT
 bool wingToggle = false;
 
 void opcontrolInit() {
+	printf("Initializing operator control...\n");
 	// Score Upper
 	controller.ButtonR1.onHold([]() { scoreUpper(); });
 	controller.ButtonR1.onReleased([]() { stopAll(); });
@@ -749,14 +800,33 @@ void opcontrolInit() {
 	controller.ButtonR2.onReleased([]() { stopAll(); });
 
 	// Intake
-	controller.ButtonL1.onPressed([]() { intakeField(); });
+	controller.ButtonL1.onHold([]() { intakeField(); });
 	controller.ButtonL1.onReleased([]() { stopAll(); });
 
 	// Intake
-	controller.ButtonL2.onPressed([]() { intakeLoader(); });
+	controller.ButtonL2.onHold([]() { intakeLoader(); });
 	controller.ButtonL2.onReleased([]() {
 		stopAll();
 		scraper.retractPiston();
+	});
+
+	// Color sort toggle
+	controller.ButtonLeft.onPressed([]() {
+		ColorSort current = cycler.getColorSort();
+		int currentVal = static_cast<int>(current);
+		ColorSort next;
+
+		if (currentVal == 0) {  // INACTIVE
+			next = static_cast<ColorSort>(1);  // RED
+			printf("Switched to RED color sort mode\n");
+		} else if (currentVal == 1) {  // RED
+			next = static_cast<ColorSort>(2);  // BLUE
+			printf("Switched to BLUE color sort mode\n");
+		} else {
+			next = static_cast<ColorSort>(0);  // INACTIVE
+			printf("Switched to INACTIVE color sort mode\n");
+		}
+		cycler.setColorSort(next);
 	});
 
 	// Score Lower
@@ -797,24 +867,9 @@ void opcontrolInit() {
 	controller.ButtonY.onPressed([]() { hood.retractPiston(); });
 	controller.ButtonY.onReleased([]() { hood.extendPiston(); });
 
-	// Color sort toggle
-	controller.ButtonX.onPressed([]() {
-		ColorSort current = cycler.getColorSort();
-		int currentVal = static_cast<int>(current);
-		ColorSort next;
 
-		if (currentVal == 0) {  // INACTIVE
-			next = static_cast<ColorSort>(1);  // RED
-		} else if (currentVal == 1) {  // RED
-			next = static_cast<ColorSort>(2);  // BLUE
-		} else {
-			next = static_cast<ColorSort>(0);  // INACTIVE
-		}
-		cycler.setColorSort(next);
-	});
-
-	// Score Lower - now color-sort aware
-	controller.ButtonL1.onPressed([]() { colorSortAwareOuttake(); });
+	// Score Lower
+	controller.ButtonL1.onPressed([]() { scoreLower(); });
 	controller.ButtonL1.onReleased([]() { stopAll(); });
 
 	// Score Upper
@@ -848,72 +903,9 @@ void opcontrolInit() {
 	stopAll();
 }
 
-#elifdef RED_ROBOT
-bool wingToggle = false;
-
-void opcontrolInit() {
-	// Score Upper
-	controller.ButtonR1.onHold([]() { scoreUpper(); });
-	controller.ButtonR1.onReleased([]() { stopAll(); });
-
-	// Score Long
-	controller.ButtonR2.onPressed([]() { scoreLong(); });
-	controller.ButtonR2.onReleased([]() { stopAll(); });
-
-	// Intake
-	controller.ButtonL1.onPressed([]() { intakeField(); });
-	controller.ButtonL1.onReleased([]() { stopAll(); });
-
-	// Intake
-	controller.ButtonL2.onPressed([]() { intakeLoader(); });
-	controller.ButtonL2.onReleased([]() {
-		stopAll();
-		scraper.retractPiston();
-	});
-
-	// Color sort toggle
-	controller.ButtonLeft.onPressed([]() {
-		ColorSort current = cycler.getColorSort();
-		int currentVal = static_cast<int>(current);
-		ColorSort next;
-
-		if (currentVal == 0) {  // INACTIVE
-			next = static_cast<ColorSort>(1);  // RED
-		} else if (currentVal == 1) {  // RED
-			next = static_cast<ColorSort>(2);  // BLUE
-		} else {
-			next = static_cast<ColorSort>(0);  // INACTIVE
-		}
-		cycler.setColorSort(next);
-	});
-
-	// Score Lower - now color-sort aware
-	controller.ButtonY.onPressed([]() { colorSortAwareOuttake(); });
-	controller.ButtonY.onReleased([]() { stopAll(); });
-
-	// Hood
-	controller.ButtonX.onPressed([]() { hood.extendPiston(); });
-	controller.ButtonX.onReleased([]() { hood.retractPiston(); });
-
-	// Wing
-	controller.ButtonRight.onPressed([]() {
-		wingToggle = !wingToggle;
-		if (wingToggle) {
-			wing.extendPiston();
-		} else {
-			wing.retractPiston();
-		}
-	});
-
-	stopAll();
-}
-
 #endif
 
 void robotInit() {
-	deviceInit();
-	setupCycler();
-
 	// constructTuningAuton();
 
 	if (autonType == 0) {
@@ -937,4 +929,5 @@ void robotInit() {
 	}
 
 	deviceInit();
+	setupCycler();
 }
