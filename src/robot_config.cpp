@@ -26,7 +26,7 @@ pros::Task* failsafeTask = nullptr;
 // Red starts on the left, Purple starts on the right
 #define PURPLE_ROBOT // RED_ROBOT, PURPLE_ROBOT
 #define MATCH // MATCH, SKILLS, AWP
-#define RED // RED, BLUE
+#define RED_TEAM // RED, BLUE
 
 //---------------------------------------------------
 // ##################### Robot 1 #####################
@@ -97,6 +97,9 @@ Pneumatics hood(hoodCylinder);
 Pneumatics wing(wingCylinder);
 Pneumatics flap(flapCylinder);
 
+const uint32_t LOADER_EJECT_WINDOW_MS = 1000;
+const uint32_t FIELD_EJECT_WINDOW_MS = 50;
+
 //---------------------------------------------------
 // ##################### Robot 2 #####################
 //---------------------------------------------------
@@ -159,10 +162,13 @@ Pneumatics hood(hoodCylinder);
 Pneumatics wing(wingCylinder);
 Pneumatics flap(flapCylinder);
 
+const uint32_t LOADER_EJECT_WINDOW_MS = 1000;
+const uint32_t FIELD_EJECT_WINDOW_MS = 300;
+
 #endif
 
 // Set red or blue
-#ifdef RED
+#ifdef RED_TEAM
 bool isRedTeam = true;
 #else
 bool isRedTeam = false;
@@ -221,92 +227,59 @@ void scoreLower() {
 //    scraperIntake.moveOut();
 }
 
-void colorSortAwareIntake() {
-}
-
-void colorSortAwareOuttake() {
-	ColorSort sortMode = cycler.getColorSort();
-	int sortVal = static_cast<int>(sortMode);
-
-	if (sortVal == 0) {  // INACTIVE
-		// Normal mode: use the old logic
-		scoreLower();
-	} else {
-		// Color sort mode: check ball color and eject appropriately
-		ColorType color = colorReader.getColor();
-		int colorVal = static_cast<int>(color);
-		int wrongColorVal = (sortVal == 1) ? 0 : 1;  // RED=1, BLUE=0
-
-		// if (colorVal == wrongColorVal) {
-		// 	scraperIntake.moveOut();  // Eject wrong color from bottom
-		// } else {
-		// 	scraperIntake.moveIn();  // Let correct color out the top
-		// 	upperScoring.moveOut();
-		// }
-	}
-}
-
 void intakeLoader() {
 	flap.retractPiston();
 	upperScoring.moveOut();
 	scraper.extendPiston();
 	scraperIntake.moveIn(50);
 
-	ColorType color = colorReader.getColor(); // RED = 1, BLUE = 0, OTHER = -1
-	ColorSort sortMode = cycler.getColorSort(); // INACTIVE=0, RED=1, BLUE=2
-
-	int colorVal = static_cast<int>(color);
+	ColorSort sortMode = cycler.getColorSort();
 	int sortVal = static_cast<int>(sortMode);
 
-	int wrongColorVal = (sortVal == 1) ? 0 : 1;
+	ColorType wrongColor = (sortVal == 1) ? ColorType::BLUE : ColorType::RED;
+	uint32_t msSinceWrongColor = pros::millis() - colorReader.getLastDetectionTime(wrongColor);
+	bool shouldEject = (sortVal != 0) && (msSinceWrongColor < LOADER_EJECT_WINDOW_MS);
 
-	printf("Intake Color: %d, Sort Mode: %d\n", colorVal, sortVal);
-	if (colorVal == wrongColorVal) {
-		cycler.resetTimer();
-	}
-
-
-	if (sortVal == 0 || cycler.getElapsedTime() > 1000) {  // INACTIVE or timer expired
-		// Normal mode: use the old logic
-		intake.moveIn();
-	} else {
+	if (shouldEject) {
 		intake.moveOut();
 		printf("Ejecting wrong color ball\n");
+	} else {
+		intake.moveIn();
 	}
 }
 
 
 void intakeField() {
 	flap.retractPiston();
-	upperScoring.moveOut();
-	intake.moveIn(75);
+	intake.moveIn();
 
-	ColorType color = colorReader.getColor(); // RED = 1, BLUE = 0, OTHER = -1
-	ColorSort sortMode = cycler.getColorSort(); // INACTIVE=0, RED=1, BLUE=2
-
-	int colorVal = static_cast<int>(color);
+	ColorSort sortMode = cycler.getColorSort();
 	int sortVal = static_cast<int>(sortMode);
 
-	int wrongColorVal = (sortVal == 1) ? 0 : 1;
+	ColorType wrongColor = (sortVal == 1) ? ColorType::BLUE : ColorType::RED;
+	uint32_t msSinceWrongColor = pros::millis() - colorReader.getLastDetectionTime(wrongColor);
 
-	printf("Intake Color: %d, Sort Mode: %d\n", colorVal, sortVal);
-	if (colorVal == wrongColorVal) {
-		cycler.resetTimer();
-	}
+	constexpr uint32_t CORRECT_COLOR_OVERRIDE_MS = 10;
+	ColorType correctColor = (sortVal == 1) ? ColorType::RED : ColorType::BLUE;
+	uint32_t lastWrongTime = colorReader.getLastDetectionTime(wrongColor);
+	uint32_t lastCorrectTime = colorReader.getLastDetectionTime(correctColor);
+	bool correctOverride = (lastCorrectTime + CORRECT_COLOR_OVERRIDE_MS >= lastWrongTime);
+	bool shouldEject = (sortVal != 0) && (msSinceWrongColor < FIELD_EJECT_WINDOW_MS)
+					   && !correctOverride;
 
-
-	if (sortVal == 0 || cycler.getElapsedTime() > 50) {  // INACTIVE or timer expired
-		// Normal mode: use the old logic
-		scraperIntake.moveIn(60);
-	} else {
+	if (shouldEject) {
 		scraperIntake.moveOut();
+		upperScoring.moveOut(50);
 		printf("Ejecting wrong color ball\n");
+	} else {
+		scraperIntake.moveIn(60);
+		upperScoring.moveOut();
 	}
 }
 
 
 void stopAll() {
-   scraperIntake.moveIn();
+   scraperIntake.stop();
    upperScoring.stop();
    scraperIntake.stop();
    intake.stop();
