@@ -1,5 +1,6 @@
 #include "robot_config.hpp"
 
+#include <cstdio>
 #include <hskylib/robot_specs.h>
 #include <hskylib/subsystems/pneumatics.h>
 #include <hskylib/ui/auton_selector.h>
@@ -7,20 +8,26 @@
 #include <hskylib/utils/commands/drive_commands.h>
 #include <hskylib/utils/utils.h>
 
+#include "hskylib/utils/color_reader.h"
+#include "hskylib/subsystems/cycler.h"
 #include "pros/adi.h"
 #include "pros/adi.hpp"
 #include "pros/motors.h"
 
 HskyController controller(pros::E_CONTROLLER_MASTER);
+
 std::queue<Command *> commandQueue;
+std::optional<pose_t> startPose;
+bool isAutonomousRunning = false;
+pros::Task* failsafeTask = nullptr;
 
 // ---------------------------------------------------------
 // ##################### Configuration #####################
 // ---------------------------------------------------------
 // Red starts on the left, Purple starts on the right
 #define PURPLE_ROBOT // RED_ROBOT, PURPLE_ROBOT
-#define SKILLS // MATCH, SKILLS, AWP
-#define RED // RED, BLUE
+#define MATCH // MATCH, SKILLS, AWP
+#define RED_TEAM // RED, BLUE
 
 //---------------------------------------------------
 // ##################### Robot 1 #####################
@@ -31,40 +38,40 @@ bool isPurpleRobot = true;
 
 // //===================== CONFIG =====================
 
-PIDController drivePid(7.0, 0.0, 0, PIDController::ERROR_TYPE::LINEAR);
-// PIDController drivePid(0.15, 0.0, 0.05, PIDController::ERROR_TYPE::LINEAR);
-// PIDController turnPid(53.0, 0.67, 115.0, PIDController::ERROR_TYPE::ANGULAR);
-// PIDController turnPid(130.0, 10, 90.0, PIDController::ERROR_TYPE::ANGULAR);
-// PIDController turnPid(70.0, 0.0, 0.0, PIDController::ERROR_TYPE::ANGULAR);
-PIDController turnPid(120, 0, 10, PIDController::ERROR_TYPE::ANGULAR);
-PIDController headingPid(50.0, 0, 0.0, PIDController::ERROR_TYPE::ANGULAR);
+PIDFController drivePid(7.0, 0.0, 0, 0, PIDFController::ERROR_TYPE::LINEAR);
+PIDFController turnPid(40, 0, 450, 16, PIDFController::ERROR_TYPE::ANGULAR);
+PIDFController headingPid(50.0, 0, 0.0, 0, PIDFController::ERROR_TYPE::ANGULAR);
 
 robot_specs_t robotConfig{.driveWheelDiameter = 2.75,
 						  .trackWidth = 11.0,
 						  .odomPodDiameter = 0.0,
-						//   .maxDrivePct = 33,
 						  .maxDrivePct = 45,
-						  .maxTurnPct = 100,
+						  .maxTurnPct = 50,
 						  .drivePID = &drivePid,
 						  .headingPID = &headingPid,
 						  .turnPID = &turnPid};
 
 // //===================== DEVICES =====================
 
-pros::MotorGroup leftDriveMotors({-11, 12, -13, 14});
-pros::MotorGroup rightDriveMotors({17, -18, 19, -20});
+pros::MotorGroup leftDriveMotors({10, -9, 8, -7, 6});
+pros::MotorGroup rightDriveMotors({-1, 2, -3, 4, -5});
 
-pros::IMU imu(16);
+pros::IMU imu(15);
 
-pros::MotorGroup intakeMotors({9});
-pros::MotorGroup lowerScoringMotors({-6});
-pros::MotorGroup upperScoringMotors({4});
+pros::MotorGroup intakeMotors({12, 13, -20}); // 12 doesn't work currently
+pros::MotorGroup scraperIntakeMotors({-17});
+pros::MotorGroup upperScoringMotors({-18, 19}); // 18 is fried
 
-pros::adi::DigitalOut scraperCylinder('b');
-pros::adi::DigitalOut hoodCylinder('a', true);
+pros::adi::DigitalOut scraperCylinder('a');
+pros::adi::DigitalOut hoodCylinder('b');
 pros::adi::DigitalOut wingCylinder('c');
+pros::adi::DigitalOut flapCylinder('d');
 
-pros::Optical opticalSensor(15);
+pros::Optical opticalSensor(21);
+HskyColorReader colorReader(21);  // Port 21 same as opticalSensor
+
+// Cycler for color-sorted intake/outtake
+Cycler cycler(colorReader);
 
 // //==================== SUBSYSTEMS ====================
 DrivebaseOdometry odom(&leftDriveMotors, &rightDriveMotors, robotConfig, &imu,
@@ -73,17 +80,21 @@ DrivebaseOdometry odom(&leftDriveMotors, &rightDriveMotors, robotConfig, &imu,
 TankDrive driveBase(leftDriveMotors, rightDriveMotors,
 					pros::E_MOTOR_BRAKE_COAST, pros::E_MOTOR_GEAR_600, 1.0,
 					0.75);
-Transport lowerScoring(lowerScoringMotors, 1, pros::E_MOTOR_BRAKE_COAST,
-					   pros::E_MOTOR_GEAR_600);
-Transport upperScoring(upperScoringMotors, 1, pros::E_MOTOR_BRAKE_COAST,
-					   pros::E_MOTOR_GEAR_600);
-
 Transport intake(intakeMotors, 1, pros::E_MOTOR_BRAKE_COAST,
-				 pros::E_MOTOR_GEAR_600);
+					  pros::E_MOTOR_GEAR_600);
+Transport scraperIntake(scraperIntakeMotors, 1, pros::E_MOTOR_BRAKE_COAST,
+                      pros::E_MOTOR_GEAR_600);
+Transport upperScoring(upperScoringMotors, 1, pros::E_MOTOR_BRAKE_COAST,
+                      pros::E_MOTOR_GEAR_600);
+
 
 Pneumatics scraper(scraperCylinder);
 Pneumatics hood(hoodCylinder);
 Pneumatics wing(wingCylinder);
+Pneumatics flap(flapCylinder);
+
+const uint32_t LOADER_EJECT_WINDOW_MS = 1000;
+const uint32_t FIELD_EJECT_WINDOW_MS = 50;
 
 //---------------------------------------------------
 // ##################### Robot 2 #####################
@@ -94,12 +105,9 @@ bool isPurpleRobot = false;
 
 //===================== CONFIG =====================
 
-PIDController drivePid(5.0, 0.0, 0, PIDController::ERROR_TYPE::LINEAR);
-// PIDController drivePid(0.15, 0.0, 0.05, PIDController::ERROR_TYPE::LINEAR);
-// PIDController turnPid(80.0, 0.0 , 0.0, PIDController::ERROR_TYPE::ANGULAR);
-PIDController turnPid(131, 0, 2, PIDController::ERROR_TYPE::ANGULAR);
-PIDController headingPid(100.0, 0.0, 0.0, PIDController::ERROR_TYPE::ANGULAR);
-// PIDController headingPid(60.0, 0.0, 0.0, PIDController::ERROR_TYPE::ANGULAR);
+PIDFController drivePid(5.0, 0.0, 0, 0, PIDFController::ERROR_TYPE::LINEAR);
+PIDFController turnPid(131, 0, 2, 0, PIDFController::ERROR_TYPE::ANGULAR);
+PIDFController headingPid(100.0, 0.0, 0.0, 0, PIDFController::ERROR_TYPE::ANGULAR);
 
 robot_specs_t robotConfig{.driveWheelDiameter = 2.75,
 						  .trackWidth = 11.0,
@@ -117,38 +125,43 @@ pros::MotorGroup rightDriveMotors({17, -18, 19, -20});
 pros::IMU imu(16);
 
 pros::MotorGroup intakeMotors({9});
-pros::MotorGroup lowerScoringMotors({-10});
-pros::MotorGroup upperScoringMotors({1});
+pros::MotorGroup scraperIntakeMotors({-6});
+pros::MotorGroup upperScoringMotors({4, 3});
 
-pros::adi::DigitalOut scraperCylinder('h');
-pros::adi::DigitalOut hoodCylinder('g');
-pros::adi::DigitalOut wingCylinder('f'); //f
+pros::adi::DigitalOut scraperCylinder('b');
+pros::adi::DigitalOut hoodCylinder('a');
+pros::adi::DigitalOut wingCylinder('c');
+pros::adi::DigitalOut flapCylinder('a');
 
+pros::Optical opticalSensor(15);
+
+// //==================== SUBSYSTEMS ====================
 DrivebaseOdometry odom(&leftDriveMotors, &rightDriveMotors, robotConfig, &imu,
 					   true);
-
-//==================== SUBSYSTEMS ====================
 
 TankDrive driveBase(leftDriveMotors, rightDriveMotors,
 					pros::E_MOTOR_BRAKE_COAST, pros::E_MOTOR_GEAR_600, 1.0,
 					0.75);
-Transport lowerScoring(lowerScoringMotors, 1, pros::E_MOTOR_BRAKE_COAST,
-					   pros::E_MOTOR_GEAR_600);
-Transport upperScoring(upperScoringMotors, 1, pros::E_MOTOR_BRAKE_COAST,
-					   pros::E_MOTOR_GEAR_600);
-
 Transport intake(intakeMotors, 1, pros::E_MOTOR_BRAKE_COAST,
-				 pros::E_MOTOR_GEAR_600);
+					  pros::E_MOTOR_GEAR_600);
+Transport scraperIntake(scraperIntakeMotors, 1, pros::E_MOTOR_BRAKE_COAST,
+                      pros::E_MOTOR_GEAR_600);
+Transport upperScoring(upperScoringMotors, 1, pros::E_MOTOR_BRAKE_COAST,
+                      pros::E_MOTOR_GEAR_600);
+
 
 Pneumatics scraper(scraperCylinder);
 Pneumatics hood(hoodCylinder);
 Pneumatics wing(wingCylinder);
-pros::Optical opticalSensor(15);
+Pneumatics flap(flapCylinder);
+
+const uint32_t LOADER_EJECT_WINDOW_MS = 1000;
+const uint32_t FIELD_EJECT_WINDOW_MS = 300;
 
 #endif
 
 // Set red or blue
-#ifdef RED
+#ifdef RED_TEAM
 bool isRedTeam = true;
 #else
 bool isRedTeam = false;
@@ -169,59 +182,102 @@ void deviceInit() {
 	pros::delay(1000);	// Allow time for devices to initialize
 	odom.reset();
 	odom.init();
+	
+	if (!startPose.has_value()) {
+		throw std::runtime_error("startPose not set for autonomous routine");
+	}
+	odom.setPose(startPose.value());
 
 	imu.reset();
 	while (imu.is_calibrating() || !std::isfinite(imu.get_heading())) {
+		printf("Calibrating IMU");
 		pros::delay(20);
 	}
 }
+
 void scoreLong() {
-	hood.extendPiston();
-	upperScoring.moveIn();
-	lowerScoring.moveIn();
-	intake.moveIn();
+   hood.extendPiston();
+   flap.extendPiston();
+   upperScoring.moveOut();
+   intake.moveIn();
+   scraperIntake.moveIn();
 }
+
 
 void scoreUpper() {
-	upperScoring.moveOut(60);
-	lowerScoring.moveIn();
-	intake.moveIn();
+   hood.retractPiston();
+   flap.extendPiston();
+   upperScoring.moveOut();//60
+   intake.moveIn();
+   scraperIntake.moveIn();
 }
+
 
 void scoreLower() {
-	upperScoring.moveOut();
-	lowerScoring.moveOut(0);
-	intake.moveOut(60);
-}
-
-void matchLoad() {
-	hood.retractPiston();
-	scraper.extendPiston();
-	upperScoring.moveIn();
-	lowerScoring.moveIn();
-	intake.moveIn();
-}
-
-void intakeField() {
-	hood.retractPiston();
-	upperScoring.moveIn();
-	lowerScoring.moveIn();
-	intake.moveIn();
+   scraper.retractPiston();
+   upperScoring.moveIn();
+   intake.moveOut();
+//    scraperIntake.moveOut();
 }
 
 void intakeLoader() {
-	hood.retractPiston();
+	flap.retractPiston();
+	upperScoring.moveOut();
 	scraper.extendPiston();
-	upperScoring.moveIn();
-	lowerScoring.moveIn();
-	intake.moveIn();
+	scraperIntake.moveIn(50);
+
+	ColorSort sortMode = cycler.getColorSort();
+	int sortVal = static_cast<int>(sortMode);
+
+	ColorType wrongColor = (sortVal == 1) ? ColorType::BLUE : ColorType::RED;
+	uint32_t msSinceWrongColor = pros::millis() - colorReader.getLastDetectionTime(wrongColor);
+	bool shouldEject = (sortVal != 0) && (msSinceWrongColor < LOADER_EJECT_WINDOW_MS);
+
+	if (shouldEject) {
+		intake.moveOut();
+		printf("Ejecting wrong color ball\n");
+	} else {
+		intake.moveIn();
+	}
 }
 
-void stopAll() {
-	upperScoring.stop();
-	lowerScoring.stop();
-	intake.stop();
+
+void intakeField() {
+	flap.retractPiston();
+	intake.moveIn();
+
+	ColorSort sortMode = cycler.getColorSort();
+	int sortVal = static_cast<int>(sortMode);
+
+	ColorType wrongColor = (sortVal == 1) ? ColorType::BLUE : ColorType::RED;
+	uint32_t msSinceWrongColor = pros::millis() - colorReader.getLastDetectionTime(wrongColor);
+
+	constexpr uint32_t CORRECT_COLOR_OVERRIDE_MS = 10;
+	ColorType correctColor = (sortVal == 1) ? ColorType::RED : ColorType::BLUE;
+	uint32_t lastWrongTime = colorReader.getLastDetectionTime(wrongColor);
+	uint32_t lastCorrectTime = colorReader.getLastDetectionTime(correctColor);
+	bool correctOverride = (lastCorrectTime + CORRECT_COLOR_OVERRIDE_MS >= lastWrongTime);
+	bool shouldEject = (sortVal != 0) && (msSinceWrongColor < FIELD_EJECT_WINDOW_MS)
+					   && !correctOverride;
+
+	if (shouldEject) {
+		scraperIntake.moveOut();
+		upperScoring.moveOut(50);
+		printf("Ejecting wrong color ball\n");
+	} else {
+		scraperIntake.moveIn(60);
+		upperScoring.moveOut();
+	}
 }
+
+
+void stopAll() {
+   scraperIntake.stop();
+   upperScoring.stop();
+   scraperIntake.stop();
+   intake.stop();
+}
+
 
 
 void queueWiggleIntake(double distance = 5.0, int times = 2) {
@@ -273,6 +329,7 @@ void queueScoreLongCut() {
 }
 
 void constructRedMatchAuton(bool isRed) {
+	startPose = pose_t(0, 0, 0 * std::numbers::pi / 180.0);
 	const int LOADER_DEAD_RECKON_TIME = 3100;
 	const int LOADER_DEAD_RECKON_SPEED = 40;
 
@@ -321,6 +378,7 @@ void constructRedMatchAuton(bool isRed) {
 }
 
 void constructPurpleMatchAuton(bool isRed) {
+	startPose = pose_t(0, 0, 0 * std::numbers::pi / 180.0);
 	const int LOADER_DEAD_RECKON_TIME = 3100;
 	const int LOADER_DEAD_RECKON_SPEED = 40;
 
@@ -371,6 +429,7 @@ void constructPurpleMatchAuton(bool isRed) {
 void constructRedAWPAuton(bool isRed) {}
 
 void constructPurpleAWPAuton(bool isRed) {
+	startPose = pose_t(0, 0, 0 * std::numbers::pi / 180.0);
 	const int LOADER_DEAD_RECKON_TIME = 2800;
 	const int LOADER_DEAD_RECKON_SPEED = 40;
 
@@ -431,7 +490,7 @@ void constructPurpleAWPAuton(bool isRed) {
 }
 
 void constructPurpleSkillsAuton() {
-	// const int LOADER_DEAD_RECKON_TIME = 2800;
+	startPose = pose_t(0, 0, 0 * std::numbers::pi / 180.0);
 	const int LOADER_DEAD_RECKON_TIME = 3100;
 	const int LOADER_DEAD_RECKON_SPEED = 40;
 	const int SCORE_LONG_TIME = 1500;
@@ -546,6 +605,7 @@ void constructPurpleSkillsAuton() {
 }
 
 void constructRedSkillsAuton() {
+	startPose = pose_t(0, 0, 0 * std::numbers::pi / 180.0);
 	const int LOADER_DEAD_RECKON_TIME = 3100;
 	const int LOADER_DEAD_RECKON_SPEED = 40;
 	const int SCORE_LONG_TIME = 1500;
@@ -648,9 +708,15 @@ void constructRedSkillsAuton() {
 }
 
 void constructTuningAuton() {
+	startPose = pose_t(0, 8, 0 * std::numbers::pi / 180.0);
 	commandQueue.push(new InstantCommand([&]() { imu.tare(); }));
-	// commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, 48.0,
-	// 5500)); commandQueue.push(new TimeoutCommand(3000));
+	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 90.0, 100000, 0, 1));
+	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 0.0, 100000, 0, 1));
+	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 180.0, 100000, 0, 1));
+	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 0.0, 100000, 0, 1));
+	// commandQueue.push(new DriveDeadReckon(driveBase, 20, 20, 100000));
+	// commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, 48.0, 5500)); 
+	commandQueue.push(new TimeoutCommand(100000));
 	// commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, -48.0,
 	// 5500));
 
@@ -661,20 +727,100 @@ void constructTuningAuton() {
 	// commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, -10.0, 99999));
 	// commandQueue.push(new TurnToHeading())
 	// for (int i = 0; i < 4; i++) {
-	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 45, 1250));
-	commandQueue.push(new TimeoutCommand(1000));
-	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 0, 1250));
-	commandQueue.push(new TimeoutCommand(1000));
-	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 90, 1250));
-	commandQueue.push(new TimeoutCommand(1000));
-	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 0, 1250));
-	commandQueue.push(new TimeoutCommand(1000));
+	// commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 45, 1250));
+	// commandQueue.push(new TimeoutCommand(1000));
+	// commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 0, 1250));
+	// commandQueue.push(new TimeoutCommand(1000));
+	// commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 90, 1250));
+	// commandQueue.push(new TimeoutCommand(1000));
+	// commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 0, 1250));
+	// commandQueue.push(new TimeoutCommand(1000));
 	// }
 	// commandQueue.push(
 	// 	new DriveDistance(driveBase, odom, robotConfig, 20.0, 1500));
 }
 
+void setupCycler() {
+	// Register intake transports
+	cycler.addIntakeTransport(&intake);
+
+	// Register outtake transports for INACTIVE mode
+	cycler.addOuttakeTransport(&upperScoring);
+	cycler.addOuttakeTransport(&scraperIntake);
+
+	// Register color-sorted outtake transports
+	cycler.addCorrectColorOuttakeTransport(&upperScoring);
+	cycler.addIncorrectColorOuttakeTransport(&scraperIntake);
+
+	// Initialize the color reader (starts background task)
+	colorReader.initialize();
+}
+
 #ifdef PURPLE_ROBOT
+bool wingToggle = false;
+
+void opcontrolInit() {
+	printf("Initializing operator control...\n");
+	// Score Upper
+	controller.ButtonR1.onHold([]() { scoreUpper(); });
+	controller.ButtonR1.onReleased([]() { stopAll(); });
+
+	// Score Long
+	controller.ButtonR2.onPressed([]() { scoreLong(); });
+	controller.ButtonR2.onReleased([]() { stopAll(); });
+
+	// Intake
+	controller.ButtonL1.onHold([]() { intakeField(); });
+	controller.ButtonL1.onReleased([]() { stopAll(); });
+
+	// Intake
+	controller.ButtonL2.onHold([]() { intakeLoader(); });
+	controller.ButtonL2.onReleased([]() {
+		stopAll();
+		scraper.retractPiston();
+	});
+
+	// Color sort toggle
+	controller.ButtonLeft.onPressed([]() {
+		ColorSort current = cycler.getColorSort();
+		int currentVal = static_cast<int>(current);
+		ColorSort next;
+
+		if (currentVal == 0) {  // INACTIVE
+			next = static_cast<ColorSort>(1);  // RED
+			printf("Switched to RED color sort mode\n");
+		} else if (currentVal == 1) {  // RED
+			next = static_cast<ColorSort>(2);  // BLUE
+			printf("Switched to BLUE color sort mode\n");
+		} else {
+			next = static_cast<ColorSort>(0);  // INACTIVE
+			printf("Switched to INACTIVE color sort mode\n");
+		}
+		cycler.setColorSort(next);
+	});
+
+	// Score Lower
+	controller.ButtonY.onPressed([]() { scoreLower(); });
+	controller.ButtonY.onReleased([]() { stopAll(); });
+
+	// Hood
+	controller.ButtonX.onPressed([]() { hood.extendPiston(); });
+	controller.ButtonX.onReleased([]() { hood.retractPiston(); });
+
+	// Wing
+	controller.ButtonRight.onPressed([]() {
+		wingToggle = !wingToggle;
+		if (wingToggle) {
+			wing.extendPiston();
+		} else {
+			wing.retractPiston();
+		}
+	});
+
+	stopAll();
+}
+
+#elifdef RED_ROBOT
 bool scraperToggle = false;
 bool wingToggle = false;
 
@@ -690,6 +836,7 @@ void opcontrolInit() {
 	// Hood
 	controller.ButtonY.onPressed([]() { hood.retractPiston(); });
 	controller.ButtonY.onReleased([]() { hood.extendPiston(); });
+
 
 	// Score Lower
 	controller.ButtonL1.onPressed([]() { scoreLower(); });
@@ -712,50 +859,6 @@ void opcontrolInit() {
 			scraper.retractPiston();
 		}
 	});
-
-	// Wing
-	controller.ButtonRight.onPressed([]() {
-		wingToggle = !wingToggle;
-		if (wingToggle) {
-			wing.extendPiston();
-		} else {
-			wing.retractPiston();
-		}
-	});
-
-	stopAll();
-}
-
-#elifdef RED_ROBOT
-bool wingToggle = false;
-
-void opcontrolInit() {
-	// Score Upper
-	controller.ButtonR1.onHold([]() { scoreUpper(); });
-	controller.ButtonR1.onReleased([]() { stopAll(); });
-
-	// Score Long
-	controller.ButtonR2.onPressed([]() { scoreLong(); });
-	controller.ButtonR2.onReleased([]() { stopAll(); });
-
-	// Intake
-	controller.ButtonL1.onPressed([]() { intakeField(); });
-	controller.ButtonL1.onReleased([]() { stopAll(); });
-
-	// Intake
-	controller.ButtonL2.onPressed([]() { intakeLoader(); });
-	controller.ButtonL2.onReleased([]() {
-		stopAll();
-		scraper.retractPiston();
-	});
-
-	// Score Lower
-	controller.ButtonY.onPressed([]() { scoreLower(); });
-	controller.ButtonY.onReleased([]() { stopAll(); });
-
-	// Hood
-	controller.ButtonX.onPressed([]() { hood.extendPiston(); });
-	controller.ButtonX.onReleased([]() { hood.retractPiston(); });
 
 	// Wing
 	controller.ButtonRight.onPressed([]() {
@@ -832,4 +935,5 @@ void populateAutonQueue() {
 
 void robotInit() {
 	deviceInit();
+	setupCycler();
 }

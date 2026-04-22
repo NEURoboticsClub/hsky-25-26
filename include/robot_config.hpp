@@ -3,6 +3,9 @@
 
 #include <queue>
 #include <vector>
+#include <optional>
+
+#include <hskylib/utils/pose.h>
 
 #include "api.h"
 #include "hskylib.h"
@@ -19,9 +22,13 @@ extern DrivebaseOdometry odom;
 extern pros::IMU imu;
 extern robot_specs_t robotConfig;
 extern std::queue<Command *> commandQueue;
+extern std::optional<pose_t> startPose;
+extern bool isAutonomousRunning;
+extern pros::Task* failsafeTask;
+extern int autonType;
 
-void opcontrolInit();
 void robotInit();
+void opcontrolInit();
 void autonSelectorInit();
 void autonSelectorRun();
 void populateAutonQueue();
