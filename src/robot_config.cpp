@@ -19,9 +19,6 @@ std::queue<Command *> commandQueue;
 std::optional<pose_t> startPose;
 bool isAutonomousRunning = false;
 pros::Task* failsafeTask = nullptr;
-std::optional<pose_t> startPose;
-bool isAutonomousRunning = false;
-pros::Task* failsafeTask = nullptr;
 
 // ---------------------------------------------------------
 // ##################### Configuration #####################
@@ -41,14 +38,14 @@ bool isPurpleRobot = true;
 // //===================== CONFIG =====================
 
 PIDFController drivePid(7.0, 0.0, 0, 0, PIDFController::ERROR_TYPE::LINEAR);
-PIDFController turnPid(120, 0, 10, 0, PIDFController::ERROR_TYPE::ANGULAR);
+PIDFController turnPid(40, 0, 450, 16, PIDFController::ERROR_TYPE::ANGULAR);
 PIDFController headingPid(50.0, 0, 0.0, 0, PIDFController::ERROR_TYPE::ANGULAR);
 
 robot_specs_t robotConfig{.driveWheelDiameter = 2.75,
 						  .trackWidth = 11.0,
 						  .odomPodDiameter = 0.0,
 						  .maxDrivePct = 45,
-						  .maxTurnPct = 100,
+						  .maxTurnPct = 50,
 						  .drivePID = &drivePid,
 						  .headingPID = &headingPid,
 						  .turnPID = &turnPid};
@@ -710,9 +707,13 @@ void constructRedSkillsAuton() {
 }
 
 void constructTuningAuton() {
-	startPose = pose_t(0, 8, 90 * std::numbers::pi / 180.0);
+	startPose = pose_t(0, 8, 0 * std::numbers::pi / 180.0);
 	commandQueue.push(new InstantCommand([&]() { imu.tare(); }));
-	commandQueue.push(new DriveDeadReckon(driveBase, 20, 20, 100000));
+	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 90.0, 100000, 0, 1));
+	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 0.0, 100000, 0, 1));
+	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 180.0, 100000, 0, 1));
+	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 0.0, 100000, 0, 1));
+	// commandQueue.push(new DriveDeadReckon(driveBase, 20, 20, 100000));
 	// commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, 48.0, 5500)); 
 	commandQueue.push(new TimeoutCommand(100000));
 	// commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, -48.0,
@@ -874,27 +875,27 @@ void opcontrolInit() {
 #endif
 
 void robotInit() {
-	// constructTuningAuton();
+	constructTuningAuton();
 
-	if (autonType == 0) {
-		if (isPurpleRobot) {
-			constructPurpleMatchAuton(isRedTeam);
-		} else {
-			constructRedMatchAuton(isRedTeam);
-		}
-	} else if (autonType == 1) {
-		if (isPurpleRobot) {
-			constructPurpleSkillsAuton();
-		} else {
-			constructRedSkillsAuton();
-		}
-	} else {
-		if (isPurpleRobot) {
-			constructPurpleAWPAuton(isRedTeam);
-		} else {
-			constructRedAWPAuton(isRedTeam);
-		}
-	}
+	// if (autonType == 0) {
+	// 	if (isPurpleRobot) {
+	// 		constructPurpleMatchAuton(isRedTeam);
+	// 	} else {
+	// 		constructRedMatchAuton(isRedTeam);
+	// 	}
+	// } else if (autonType == 1) {
+	// 	if (isPurpleRobot) {
+	// 		constructPurpleSkillsAuton();
+	// 	} else {
+	// 		constructRedSkillsAuton();
+	// 	}
+	// } else {
+	// 	if (isPurpleRobot) {
+	// 		constructPurpleAWPAuton(isRedTeam);
+	// 	} else {
+	// 		constructRedAWPAuton(isRedTeam);
+	// 	}
+	// }
 
 	deviceInit();
 	setupCycler();
