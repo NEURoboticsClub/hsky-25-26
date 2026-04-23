@@ -5,6 +5,7 @@
 #include <hskylib/utils/commands/command_runner.h>
 #include <hskylib/utils/commands/drive_commands.h>
 #include <queue>
+#include <stdexcept>
 
 /**
  * Runs initialization code. This occurs as soon as the program is started.
@@ -15,7 +16,6 @@
 void initialize() {
 	robotInit();
 	controller.initialize();
-	autonSelectorInit();
 }
 
 /**
@@ -26,10 +26,15 @@ void initialize() {
 void disabled() {
 	isAutonomousRunning = false;
 
+	// Remove failsafe FIRST so it cannot dereference the runner mid-free.
 	if (failsafeTask != nullptr) {
 		failsafeTask->remove();
 		delete failsafeTask;
 		failsafeTask = nullptr;
+	}
+	if (activeCommandRunner != nullptr) {
+		delete activeCommandRunner;
+		activeCommandRunner = nullptr;
 	}
 }
 
@@ -43,6 +48,7 @@ void disabled() {
  * starts.
  */
 void competition_initialize() {
+	autonSelectorInit();
 	autonSelectorRun();
 }
 
@@ -59,28 +65,43 @@ void competition_initialize() {
  */
 void autonomous() {
 	populateAutonQueue();
-	CommandRunner commandRunner(commandQueue);
+
+	if (!startPose.has_value()) {
+		throw std::runtime_error("startPose not set for autonomous routine");
+	}
+	odom.setPose(startPose.value());
+
+	activeCommandRunner = new CommandRunner(commandQueue);
 
 	if (!(autonType == 1)) { // NOT SKILLS
 		isAutonomousRunning = true;
 
-		failsafeTask = new pros::Task([&commandRunner]() {
-			pose_t* pose = new pose_t();
+		failsafeTask = new pros::Task([]() {
+			pose_t pose;
 			while (isAutonomousRunning) {
-				odom.getPose(pose);
-				if (pose->y >= 60.0) {
-					commandRunner.stop();
-					printf("Failsafe triggered: y = %f\n", pose->y);
+				odom.getPose(&pose);
+				if (pose.y >= 60.0 && activeCommandRunner != nullptr) {
+					activeCommandRunner->stop();
+					printf("Failsafe triggered: y = %f\n", pose.y);
 					break;
 				}
 				pros::delay(20);
 			}
-			delete pose;
 		});
 	}
 
-	commandRunner.run();
+	activeCommandRunner->run();
 	isAutonomousRunning = false;
+
+	// Clean-exit cleanup: let the failsafe loop observe the flag and exit,
+	// then tear it down before freeing the runner.
+	if (failsafeTask != nullptr) {
+		failsafeTask->join();
+		delete failsafeTask;
+		failsafeTask = nullptr;
+	}
+	delete activeCommandRunner;
+	activeCommandRunner = nullptr;
 }
 
 /**

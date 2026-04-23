@@ -5,6 +5,7 @@
 #include <vector>
 #include <optional>
 
+#include <hskylib/utils/commands/command_runner.h>
 #include <hskylib/utils/pose.h>
 
 #include "api.h"
@@ -25,6 +26,7 @@ extern std::queue<Command *> commandQueue;
 extern std::optional<pose_t> startPose;
 extern bool isAutonomousRunning;
 extern pros::Task* failsafeTask;
+extern CommandRunner* activeCommandRunner;
 extern int autonType;
 
 void robotInit();

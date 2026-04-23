@@ -5,6 +5,7 @@
 #include <hskylib/subsystems/pneumatics.h>
 #include <hskylib/ui/auton_selector.h>
 #include <hskylib/utils/commands/base_commands.h>
+#include <hskylib/utils/commands/command_runner.h>
 #include <hskylib/utils/commands/drive_commands.h>
 #include <hskylib/utils/utils.h>
 
@@ -20,6 +21,7 @@ std::queue<Command *> commandQueue;
 std::optional<pose_t> startPose;
 bool isAutonomousRunning = false;
 pros::Task* failsafeTask = nullptr;
+CommandRunner* activeCommandRunner = nullptr;
 
 // ---------------------------------------------------------
 // ##################### Configuration #####################
@@ -182,11 +184,6 @@ void deviceInit() {
 	pros::delay(1000);	// Allow time for devices to initialize
 	odom.reset();
 	odom.init();
-	
-	if (!startPose.has_value()) {
-		throw std::runtime_error("startPose not set for autonomous routine");
-	}
-	odom.setPose(startPose.value());
 
 	imu.reset();
 	while (imu.is_calibrating() || !std::isfinite(imu.get_heading())) {
@@ -785,18 +782,26 @@ void opcontrolInit() {
 		ColorSort current = cycler.getColorSort();
 		int currentVal = static_cast<int>(current);
 		ColorSort next;
+		const char* label;
 
 		if (currentVal == 0) {  // INACTIVE
 			next = static_cast<ColorSort>(1);  // RED
+			label = "SORT: RED";
 			printf("Switched to RED color sort mode\n");
 		} else if (currentVal == 1) {  // RED
 			next = static_cast<ColorSort>(2);  // BLUE
+			label = "SORT: BLUE";
 			printf("Switched to BLUE color sort mode\n");
 		} else {
 			next = static_cast<ColorSort>(0);  // INACTIVE
+			label = "SORT: OFF";
 			printf("Switched to INACTIVE color sort mode\n");
 		}
 		cycler.setColorSort(next);
+
+		controller.print(0, 0, "%-19s", label);
+		pros::delay(55);
+   		controller.rumble(".");
 	});
 
 	// Score Lower
@@ -916,11 +921,27 @@ void autonSelectorInit() {
 	selector.registerAuton(3, "Test", [](std::queue<Command *> &q,
 										 AllianceColor color,
 										 StartingSide side) {
-		commandQueue.push(new InstantCommand([&]() { imu.tare(); }));
-		commandQueue.push(
-			new DriveDistance(driveBase, odom, robotConfig, 24.0, 2000));
-		commandQueue.push(
-			new TurnToHeading(driveBase, odom, robotConfig, 90.0, 1500));
+		startPose = pose_t(0, 0, 0);
+
+		// Color picks direction, side picks speed.
+		// RED  + LEFT  -> forward  25%
+		// RED  + RIGHT -> forward  75%
+		// BLUE + LEFT  -> reverse  25%
+		// BLUE + RIGHT -> reverse  75%
+		bool isRed = (color == AllianceColor::RED_ALLIANCE);
+		bool isRight = (side == StartingSide::RIGHT);
+		int direction = isRed ? 1 : -1;
+		int speed = isRight ? 75 : 25;
+		int pct = direction * speed;
+
+		commandQueue.push(new InstantCommand([pct, isRed, isRight]() {
+			printf("Test auton: color=%s side=%s pct=%d\n",
+				   isRed ? "RED" : "BLUE",
+				   isRight ? "RIGHT" : "LEFT",
+				   pct);
+		}));
+		commandQueue.push(new DriveDeadReckon(driveBase, pct, pct, 2000));
+		commandQueue.push(new TimeoutCommand(500));
 	});
 
 }
