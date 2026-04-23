@@ -41,9 +41,9 @@ PIDFController drivePid(7.0, 0.0, 0, 0, PIDFController::ERROR_TYPE::LINEAR);
 PIDFController turnPid(40, 0, 450, 16, PIDFController::ERROR_TYPE::ANGULAR);
 PIDFController headingPid(50.0, 0, 0.0, 0, PIDFController::ERROR_TYPE::ANGULAR);
 
-robot_specs_t robotConfig{.driveWheelDiameter = 2.75,
+robot_specs_t robotConfig{.driveWheelDiameter = 2.58,
 						  .trackWidth = 11.0,
-						  .odomPodDiameter = 0.0,
+						  .odomGearRatio = 1.0,
 						  .maxDrivePct = 45,
 						  .maxTurnPct = 50,
 						  .drivePID = &drivePid,
@@ -707,14 +707,14 @@ void constructRedSkillsAuton() {
 }
 
 void constructTuningAuton() {
-	startPose = pose_t(0, 8, 0 * std::numbers::pi / 180.0);
+	startPose = pose_t(0, 0, 0 * std::numbers::pi / 180.0);
 	commandQueue.push(new InstantCommand([&]() { imu.tare(); }));
 	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 90.0, 100000, 0, 1));
 	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 0.0, 100000, 0, 1));
 	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 180.0, 100000, 0, 1));
 	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 0.0, 100000, 0, 1));
 	// commandQueue.push(new DriveDeadReckon(driveBase, 20, 20, 100000));
-	// commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, 48.0, 5500)); 
+	commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, 48.0, 100000)); 
 	commandQueue.push(new TimeoutCommand(100000));
 	// commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, -48.0,
 	// 5500));
