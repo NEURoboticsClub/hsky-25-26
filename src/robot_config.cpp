@@ -288,27 +288,25 @@ void queueWiggleIntake(double distance = 5.0, int times = 2) {
 	}
 }
 
-void queueLoaderCycle(int deadReckonTime, uint8_t speectPct = 100) {
+void queueLoaderCycle(int deadReckonTime, uint8_t speedtPct = 100) {
 	commandQueue.push(new InstantCommand([&]() { intakeLoader(); }));
 	commandQueue.push(new TimeoutCommand(250));
 	commandQueue.push(
-		new DriveDeadReckon(driveBase, speectPct, speectPct, deadReckonTime));
-	// queueWiggleIntake(1.0, 2);
-	// commandQueue.push(
-	// 	new DriveDeadReckon(driveBase, speectPct, speectPct, deadReckonTime/2 ));
+		new DriveDeadReckon(driveBase, -speedtPct, -speedtPct, deadReckonTime));
 	commandQueue.push(new InstantCommand([&]() { stopAll(); }));
+	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 90.0, 1000));
 }
 
 void queueScoreLong() {
 	commandQueue.push(
-		new DriveDistance(driveBase, odom, robotConfig, -37, 1500));
+		new DriveDistance(driveBase, odom, robotConfig, 37, 1500));
 
 	commandQueue.push(
-		new DriveDeadReckon(driveBase, -50, -50, 250)
+		new DriveDeadReckon(driveBase, 50, 50, 250)
 	);
 	commandQueue.push(new InstantCommand([&]() { scoreLong(); }));
 	commandQueue.push(
-		new DriveDeadReckon(driveBase, -50, -50, 1000)
+		new DriveDeadReckon(driveBase, 50, 50, 1000)
 	);
 	commandQueue.push(new TimeoutCommand(1200));
 }
@@ -377,7 +375,7 @@ void constructRedMatchAuton(bool isRed) {
 }
 
 void constructPurpleMatchAuton(bool isRed) {
-	startPose = pose_t(0, 0, 0 * std::numbers::pi / 180.0);
+	startPose = pose_t(88, 24, 180 * std::numbers::pi / 180.0);
 	const int LOADER_DEAD_RECKON_TIME = 3100;
 	const int LOADER_DEAD_RECKON_SPEED = 40;
 
@@ -385,37 +383,37 @@ void constructPurpleMatchAuton(bool isRed) {
 
 	// First loader cycle
 	commandQueue.push(
-		new DriveDistance(driveBase, odom, robotConfig, 30.5, 1500));
+		new DriveDistance(driveBase, odom, robotConfig, -32.5, 1500));
 	commandQueue.push(
-		new TurnToHeading(driveBase, odom, robotConfig, 270.0, 1500));
+		new TurnToHeading(driveBase, odom, robotConfig, 90.0, 1500));
 
-	// Intake from loader
+	// // Intake from loader
 	queueLoaderCycle(LOADER_DEAD_RECKON_TIME, LOADER_DEAD_RECKON_SPEED);
 
-	// Back up and turn to corner
-	commandQueue.push(
-		new DriveDistance(driveBase, odom, robotConfig, -22, 1500));
-	commandQueue.push(
-		new TurnToHeading(driveBase, odom, robotConfig, 315.0, 1000));
+	// // Back up and turn to corner
+	// commandQueue.push(
+	// 	new DriveDistance(driveBase, odom, robotConfig, -22, 1500));
+	// commandQueue.push(
+	// 	new TurnToHeading(driveBase, odom, robotConfig, 315.0, 1000));
 
-	// Spit out wrong color
-	commandQueue.push(new InstantCommand([&]() { scraper.retractPiston(); }));
-	commandQueue.push(new InstantCommand([&]() { scoreLower(); }));
-	commandQueue.push(new WaitUntilColorSensor(opticalSensor, isRed, 2000));
-	commandQueue.push(new InstantCommand([&]() { stopAll(); }));
-	commandQueue.push(
-		new TurnToHeading(driveBase, odom, robotConfig, 270.0, 1000));
+	// // Spit out wrong color
+	// commandQueue.push(new InstantCommand([&]() { scraper.retractPiston(); }));
+	// commandQueue.push(new InstantCommand([&]() { scoreLower(); }));
+	// commandQueue.push(new WaitUntilColorSensor(opticalSensor, isRed, 2000));
+	// commandQueue.push(new InstantCommand([&]() { stopAll(); }));
+	// commandQueue.push(
+	// 	new TurnToHeading(driveBase, odom, robotConfig, 270.0, 1000));
 
-	// Score long
+	// // Score long
 	queueScoreLong();
-	commandQueue.push(new InstantCommand([&]() { stopAll(); }));
+	// commandQueue.push(new InstantCommand([&]() { stopAll(); }));
 
-	commandQueue.push(
-		new DriveDistance(driveBase, odom, robotConfig, 20, 1500, 50));
-	queueLoaderCycle(LOADER_DEAD_RECKON_TIME, LOADER_DEAD_RECKON_SPEED);
+	// commandQueue.push(
+	// 	new DriveDistance(driveBase, odom, robotConfig, 20, 1500, 50));
+	// queueLoaderCycle(LOADER_DEAD_RECKON_TIME, LOADER_DEAD_RECKON_SPEED);
 
-	// Score long
-	queueScoreLong();
+	// // Score long
+	// queueScoreLong();
 
 	// Stop
 	commandQueue.push(new InstantCommand([&]() {
@@ -709,10 +707,10 @@ void constructRedSkillsAuton() {
 void constructTuningAuton() {
 	startPose = pose_t(0, 0, 0 * std::numbers::pi / 180.0);
 	commandQueue.push(new InstantCommand([&]() { imu.tare(); }));
-	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 90.0, 100000, 0, 1));
-	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 0.0, 100000, 0, 1));
-	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 180.0, 100000, 0, 1));
-	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 0.0, 100000, 0, 1));
+	// commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 90.0, 100000, 0, 1));
+	// commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 0.0, 100000, 0, 1));
+	// commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 180.0, 100000, 0, 1));
+	// commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 0.0, 100000, 0, 1));
 	// commandQueue.push(new DriveDeadReckon(driveBase, 20, 20, 100000));
 	commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, 48.0, 100000)); 
 	commandQueue.push(new TimeoutCommand(100000));
@@ -875,27 +873,27 @@ void opcontrolInit() {
 #endif
 
 void robotInit() {
-	constructTuningAuton();
+	// constructTuningAuton();
 
-	// if (autonType == 0) {
-	// 	if (isPurpleRobot) {
-	// 		constructPurpleMatchAuton(isRedTeam);
-	// 	} else {
-	// 		constructRedMatchAuton(isRedTeam);
-	// 	}
-	// } else if (autonType == 1) {
-	// 	if (isPurpleRobot) {
-	// 		constructPurpleSkillsAuton();
-	// 	} else {
-	// 		constructRedSkillsAuton();
-	// 	}
-	// } else {
-	// 	if (isPurpleRobot) {
-	// 		constructPurpleAWPAuton(isRedTeam);
-	// 	} else {
-	// 		constructRedAWPAuton(isRedTeam);
-	// 	}
-	// }
+	if (autonType == 0) {
+		if (isPurpleRobot) {
+			constructPurpleMatchAuton(isRedTeam);
+		} else {
+			constructRedMatchAuton(isRedTeam);
+		}
+	} else if (autonType == 1) {
+		if (isPurpleRobot) {
+			constructPurpleSkillsAuton();
+		} else {
+			constructRedSkillsAuton();
+		}
+	} else {
+		if (isPurpleRobot) {
+			constructPurpleAWPAuton(isRedTeam);
+		} else {
+			constructRedAWPAuton(isRedTeam);
+		}
+	}
 
 	deviceInit();
 	setupCycler();

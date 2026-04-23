@@ -61,7 +61,7 @@ void autonomous() {
 			pose_t* pose = new pose_t();
 			while (isAutonomousRunning) {
 				odom.getPose(pose);
-				if (pose->y >= 60.0) {
+				if (pose->y >= 50.0) {
 					commandRunner.stop();
 					printf("Failsafe triggered: y = %f\n", pose->y);
 					break;
