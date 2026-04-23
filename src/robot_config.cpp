@@ -27,7 +27,7 @@ CommandRunner* activeCommandRunner = nullptr;
 // ##################### Configuration #####################
 // ---------------------------------------------------------
 // Red starts on the left, Purple starts on the right
-#define PURPLE_ROBOT // RED_ROBOT, PURPLE_ROBOT
+#define RED_ROBOT // RED_ROBOT, PURPLE_ROBOT
 #define MATCH // MATCH, SKILLS, AWP
 #define RED_TEAM // RED, BLUE
 
@@ -107,35 +107,39 @@ bool isPurpleRobot = false;
 
 //===================== CONFIG =====================
 
-PIDFController drivePid(5.0, 0.0, 0, 0, PIDFController::ERROR_TYPE::LINEAR);
-PIDFController turnPid(131, 0, 2, 0, PIDFController::ERROR_TYPE::ANGULAR);
-PIDFController headingPid(100.0, 0.0, 0.0, 0, PIDFController::ERROR_TYPE::ANGULAR);
+PIDFController drivePid(7.0, 0.0, 0, 0, PIDFController::ERROR_TYPE::LINEAR);
+PIDFController turnPid(40, 0, 450, 16, PIDFController::ERROR_TYPE::ANGULAR);
+PIDFController headingPid(50.0, 0, 0.0, 0, PIDFController::ERROR_TYPE::ANGULAR);
 
-robot_specs_t robotConfig{.driveWheelDiameter = 2.75,
+robot_specs_t robotConfig{.driveWheelDiameter = 2.58,
 						  .trackWidth = 11.0,
-						  .odomPodDiameter = 0.0,
-						  .maxDrivePct = 33,
+						  .odomGearRatio = 1.0,
+						  .maxDrivePct = 45,
 						  .maxTurnPct = 50,
 						  .drivePID = &drivePid,
 						  .headingPID = &headingPid,
 						  .turnPID = &turnPid};
 //===================== DEVICES =====================
 
-pros::MotorGroup leftDriveMotors({11, -12, 13, -14});
-pros::MotorGroup rightDriveMotors({17, -18, 19, -20});
+pros::MotorGroup leftDriveMotors({17, -11, 7, -2, 8});
+pros::MotorGroup rightDriveMotors({-21, 9, -10, 18, -19});
 
-pros::IMU imu(16);
+pros::IMU imu(15);
 
-pros::MotorGroup intakeMotors({9});
+pros::MotorGroup intakeMotors({-5, -3});
 pros::MotorGroup scraperIntakeMotors({-6});
-pros::MotorGroup upperScoringMotors({4, 3});
+pros::MotorGroup upperScoringMotors({-4, 1});
 
 pros::adi::DigitalOut scraperCylinder('b');
-pros::adi::DigitalOut hoodCylinder('a');
+pros::adi::DigitalOut hoodCylinder('d');
 pros::adi::DigitalOut wingCylinder('c');
 pros::adi::DigitalOut flapCylinder('a');
 
-pros::Optical opticalSensor(15);
+pros::Optical opticalSensor(12);
+HskyColorReader colorReader(12);  // Port 21 same as opticalSensor
+
+// Cycler for color-sorted intake/outtake
+Cycler cycler(colorReader);
 
 // //==================== SUBSYSTEMS ====================
 DrivebaseOdometry odom(&leftDriveMotors, &rightDriveMotors, robotConfig, &imu,
@@ -193,22 +197,11 @@ void deviceInit() {
 }
 
 void scoreLong() {
-   hood.extendPiston();
    flap.extendPiston();
    upperScoring.moveOut();
    intake.moveIn();
    scraperIntake.moveIn();
 }
-
-
-void scoreUpper() {
-   hood.retractPiston();
-   flap.extendPiston();
-   upperScoring.moveOut();//60
-   intake.moveIn();
-   scraperIntake.moveIn();
-}
-
 
 void scoreLower() {
    scraper.retractPiston();
@@ -241,7 +234,6 @@ void intakeLoader() {
 
 void intakeField() {
 	flap.retractPiston();
-	intake.moveIn();
 
 	ColorSort sortMode = cycler.getColorSort();
 	int sortVal = static_cast<int>(sortMode);
@@ -253,17 +245,31 @@ void intakeField() {
 	ColorType correctColor = (sortVal == 1) ? ColorType::RED : ColorType::BLUE;
 	uint32_t lastWrongTime = colorReader.getLastDetectionTime(wrongColor);
 	uint32_t lastCorrectTime = colorReader.getLastDetectionTime(correctColor);
-	bool correctOverride = (lastCorrectTime + CORRECT_COLOR_OVERRIDE_MS >= lastWrongTime);
-	bool shouldEject = (sortVal != 0) && (msSinceWrongColor < FIELD_EJECT_WINDOW_MS)
-					   && !correctOverride;
+	//bool correctOverride = (lastCorrectTime + CORRECT_COLOR_OVERRIDE_MS >= lastWrongTime);
+	bool shouldEject = (sortVal != 0) && (msSinceWrongColor < FIELD_EJECT_WINDOW_MS);
+	bool correctOverride = (sortVal != 0) && (lastCorrectTime > lastWrongTime) && (pros::millis() - lastCorrectTime < CORRECT_COLOR_OVERRIDE_MS);
+
+	if (sortVal == 0) {
+		intake.moveIn();
+		scraperIntake.moveIn();
+		upperScoring.moveIn();
+		return;
+	}
 
 	if (shouldEject) {
+		intake.moveIn(30);
 		scraperIntake.moveOut();
-		upperScoring.moveOut(50);
+		upperScoring.stop();
 		printf("Ejecting wrong color ball\n");
-	} else {
-		scraperIntake.moveIn(60);
+	} else if (correctOverride) {
+		intake.moveIn();
+		scraperIntake.moveIn();
 		upperScoring.moveOut();
+		// printf("Overriding eject due to correct color detection\n");
+	} else {
+		intake.moveIn(80);
+		scraperIntake.stop();
+		upperScoring.stop();
 	}
 }
 
@@ -295,8 +301,10 @@ void queueLoaderCycle(int deadReckonTime, uint8_t speedtPct = 100) {
 	parallelCommands.push_back(new SequentialCommandGroup(intakeQueue));
 	parallelCommands.push_back(new DriveDeadReckon(driveBase, -speedtPct, -speedtPct, deadReckonTime));
 
+	// commandQueue.push(new InstantCommand([&]() { cycler.setColorSort(isRed ? ColorSort::RED: ColorSort::BLUE); }));
 	commandQueue.push(new ParallelCommandGroup(parallelCommands));
 	commandQueue.push(new InstantCommand([&]() { stopAll(); }));
+	commandQueue.push(new InstantCommand([&]() { cycler.setColorSort(ColorSort::INACTIVE); }));
 	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 90.0, 1000));
 }
 
@@ -391,9 +399,7 @@ void constructPurpleMatchAuton(bool isRed) {
 		new TurnToHeading(driveBase, odom, robotConfig, 90.0, 1500));
 
 	// Intake from loader
-	commandQueue.push(new InstantCommand([&]() { cycler.setColorSort(isRed ? ColorSort::RED: ColorSort::BLUE); }));
 	queueLoaderCycle(LOADER_DEAD_RECKON_TIME, LOADER_DEAD_RECKON_SPEED);
-	commandQueue.push(new InstantCommand([&]() { cycler.setColorSort(ColorSort::INACTIVE); }));
 
 	// // Back up and turn to corner
 	// commandQueue.push(
@@ -762,7 +768,6 @@ void setupCycler() {
 bool wingToggle = false;
 
 void opcontrolInit() {
-	printf("Initializing operator control...\n");
 	// Score Upper
 	controller.ButtonR1.onHold([]() { scoreUpper(); });
 	controller.ButtonR1.onReleased([]() { stopAll(); });
@@ -831,42 +836,17 @@ void opcontrolInit() {
 }
 
 #elifdef RED_ROBOT
-bool scraperToggle = false;
 bool wingToggle = false;
+bool hoodToggle = false;
 
 void opcontrolInit() {
-	// Intake
-	controller.ButtonR1.onPressed([]() { intakeField(); });
-	controller.ButtonR1.onReleased([]() { stopAll(); });
-
-	// Score Long
-	controller.ButtonR2.onPressed([]() { scoreLong(); });
-	controller.ButtonR2.onReleased([]() { stopAll(); });
-
 	// Hood
-	controller.ButtonY.onPressed([]() { hood.retractPiston(); });
-	controller.ButtonY.onReleased([]() { hood.extendPiston(); });
-
-
-	// Score Lower
-	controller.ButtonL1.onPressed([]() { scoreLower(); });
-	controller.ButtonL1.onReleased([]() { stopAll(); });
-
-	// Score Upper
-	controller.ButtonL2.onPressed([]() { scoreUpper(); });
-	controller.ButtonL2.onReleased([]() { stopAll(); });
-
-	// Upper Scoring Backward
-	controller.ButtonLeft.onPressed([]() { upperScoring.moveOut(); });
-	controller.ButtonLeft.onReleased([]() { stopAll(); });
-
-	// Scraper
-	controller.ButtonA.onPressed([]() {
-		scraperToggle = !scraperToggle;
-		if (scraperToggle) {
-			scraper.extendPiston();
+	controller.ButtonY.onPressed([]() {
+		hoodToggle = !hoodToggle;
+		if (hoodToggle) {
+			hood.extendPiston();
 		} else {
-			scraper.retractPiston();
+			hood.retractPiston();
 		}
 	});
 
@@ -878,6 +858,55 @@ void opcontrolInit() {
 		} else {
 			wing.retractPiston();
 		}
+	});
+
+	// Score High
+	controller.ButtonR1.onHold([]() { 
+		hood.extendPiston();
+		scoreLong();
+	});
+	controller.ButtonR1.onReleased([]() { stopAll(); });
+
+	// Score Low
+	controller.ButtonR2.onPressed([]() { scoreLower(); });
+	controller.ButtonR2.onReleased([]() { stopAll(); });
+
+	// Intake Field
+	controller.ButtonL1.onHold([]() { intakeField(); });
+	controller.ButtonL1.onReleased([]() { stopAll(); });
+
+	// Intake Loader
+	controller.ButtonL2.onHold([]() { intakeLoader(); });
+	controller.ButtonL2.onReleased([]() { 
+		stopAll(); 
+		scraper.retractPiston();
+	});
+
+	// Color sort toggle
+	controller.ButtonLeft.onPressed([]() {
+		ColorSort current = cycler.getColorSort();
+		int currentVal = static_cast<int>(current);
+		ColorSort next;
+		const char* label;
+
+		if (currentVal == 0) {  // INACTIVE
+			next = static_cast<ColorSort>(1);  // RED
+			label = "SORT: RED";
+			printf("Switched to RED color sort mode\n");
+		} else if (currentVal == 1) {  // RED
+			next = static_cast<ColorSort>(2);  // BLUE
+			label = "SORT: BLUE";
+			printf("Switched to BLUE color sort mode\n");
+		} else {
+			next = static_cast<ColorSort>(0);  // INACTIVE
+			label = "SORT: OFF";
+			printf("Switched to INACTIVE color sort mode\n");
+		}
+		cycler.setColorSort(next);
+
+		controller.print(0, 0, "%-19s", label);
+		pros::delay(55);
+   		controller.rumble(".");
 	});
 
 	stopAll();
