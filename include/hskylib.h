@@ -21,6 +21,10 @@
 #include "hskylib/utils/toggle.h"
 #include "hskylib/utils/utils.h"
 
+// UI
+#include "hskylib/ui/button.h"
+#include "hskylib/ui/auton_selector.h"
+
 // Misc
 #include "hskylib/robot_specs.h"
 
