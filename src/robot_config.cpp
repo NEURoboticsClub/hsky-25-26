@@ -289,10 +289,15 @@ void queueWiggleIntake(double distance = 5.0, int times = 2) {
 }
 
 void queueLoaderCycle(int deadReckonTime, uint8_t speedtPct = 100) {
-	commandQueue.push(new InstantCommand([&]() { intakeLoader(); }));
-	commandQueue.push(new TimeoutCommand(250));
-	commandQueue.push(
-		new DriveDeadReckon(driveBase, -speedtPct, -speedtPct, deadReckonTime));
+	std::queue<Command *> intakeQueue;
+	intakeQueue.push(new TimeoutCommand(250));
+	intakeQueue.push(new RepeatForTimeCommand([&]() { intakeLoader(); }, deadReckonTime - 250));
+	
+	std::vector<Command *> parallelCommands;
+	parallelCommands.push_back(new SequentialCommandGroup(intakeQueue));
+	parallelCommands.push_back(new DriveDeadReckon(driveBase, -speedtPct, -speedtPct, deadReckonTime));
+
+	commandQueue.push(new ParallelCommandGroup(parallelCommands));
 	commandQueue.push(new InstantCommand([&]() { stopAll(); }));
 	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 90.0, 1000));
 }
@@ -387,8 +392,10 @@ void constructPurpleMatchAuton(bool isRed) {
 	commandQueue.push(
 		new TurnToHeading(driveBase, odom, robotConfig, 90.0, 1500));
 
-	// // Intake from loader
+	// Intake from loader
+	commandQueue.push(new InstantCommand([&]() { cycler.setColorSort(isRed ? ColorSort::RED: ColorSort::BLUE); }));
 	queueLoaderCycle(LOADER_DEAD_RECKON_TIME, LOADER_DEAD_RECKON_SPEED);
+	commandQueue.push(new InstantCommand([&]() { cycler.setColorSort(ColorSort::INACTIVE); }));
 
 	// // Back up and turn to corner
 	// commandQueue.push(
