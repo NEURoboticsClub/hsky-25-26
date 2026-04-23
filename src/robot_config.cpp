@@ -3,7 +3,9 @@
 #include <cstdio>
 #include <hskylib/robot_specs.h>
 #include <hskylib/subsystems/pneumatics.h>
+#include <hskylib/ui/auton_selector.h>
 #include <hskylib/utils/commands/base_commands.h>
+#include <hskylib/utils/commands/command_runner.h>
 #include <hskylib/utils/commands/drive_commands.h>
 #include <hskylib/utils/utils.h>
 
@@ -19,6 +21,7 @@ std::queue<Command *> commandQueue;
 std::optional<pose_t> startPose;
 bool isAutonomousRunning = false;
 pros::Task* failsafeTask = nullptr;
+CommandRunner* activeCommandRunner = nullptr;
 
 // ---------------------------------------------------------
 // ##################### Configuration #####################
@@ -37,20 +40,15 @@ bool isPurpleRobot = true;
 
 // //===================== CONFIG =====================
 
-PIDController drivePid(7.0, 0.0, 0, PIDController::ERROR_TYPE::LINEAR);
-// PIDController drivePid(0.15, 0.0, 0.05, PIDController::ERROR_TYPE::LINEAR);
-// PIDController turnPid(53.0, 0.67, 115.0, PIDController::ERROR_TYPE::ANGULAR);
-// PIDController turnPid(130.0, 10, 90.0, PIDController::ERROR_TYPE::ANGULAR);
-// PIDController turnPid(70.0, 0.0, 0.0, PIDController::ERROR_TYPE::ANGULAR);
-PIDController turnPid(120, 0, 10, PIDController::ERROR_TYPE::ANGULAR);
-PIDController headingPid(50.0, 0, 0.0, PIDController::ERROR_TYPE::ANGULAR);
+PIDFController drivePid(7.0, 0.0, 0, 0, PIDFController::ERROR_TYPE::LINEAR);
+PIDFController turnPid(40, 0, 450, 16, PIDFController::ERROR_TYPE::ANGULAR);
+PIDFController headingPid(50.0, 0, 0.0, 0, PIDFController::ERROR_TYPE::ANGULAR);
 
 robot_specs_t robotConfig{.driveWheelDiameter = 2.75,
 						  .trackWidth = 11.0,
 						  .odomPodDiameter = 0.0,
-						//   .maxDrivePct = 33,
 						  .maxDrivePct = 45,
-						  .maxTurnPct = 100,
+						  .maxTurnPct = 50,
 						  .drivePID = &drivePid,
 						  .headingPID = &headingPid,
 						  .turnPID = &turnPid};
@@ -109,12 +107,9 @@ bool isPurpleRobot = false;
 
 //===================== CONFIG =====================
 
-PIDController drivePid(5.0, 0.0, 0, PIDController::ERROR_TYPE::LINEAR);
-// PIDController drivePid(0.15, 0.0, 0.05, PIDController::ERROR_TYPE::LINEAR);
-// PIDController turnPid(80.0, 0.0 , 0.0, PIDController::ERROR_TYPE::ANGULAR);
-PIDController turnPid(131, 0, 2, PIDController::ERROR_TYPE::ANGULAR);
-PIDController headingPid(100.0, 0.0, 0.0, PIDController::ERROR_TYPE::ANGULAR);
-// PIDController headingPid(60.0, 0.0, 0.0, PIDController::ERROR_TYPE::ANGULAR);
+PIDFController drivePid(5.0, 0.0, 0, 0, PIDFController::ERROR_TYPE::LINEAR);
+PIDFController turnPid(131, 0, 2, 0, PIDFController::ERROR_TYPE::ANGULAR);
+PIDFController headingPid(100.0, 0.0, 0.0, 0, PIDFController::ERROR_TYPE::ANGULAR);
 
 robot_specs_t robotConfig{.driveWheelDiameter = 2.75,
 						  .trackWidth = 11.0,
@@ -189,11 +184,6 @@ void deviceInit() {
 	pros::delay(1000);	// Allow time for devices to initialize
 	odom.reset();
 	odom.init();
-	
-	if (!startPose.has_value()) {
-		throw std::runtime_error("startPose not set for autonomous routine");
-	}
-	odom.setPose(startPose.value());
 
 	imu.reset();
 	while (imu.is_calibrating() || !std::isfinite(imu.get_heading())) {
@@ -715,9 +705,13 @@ void constructRedSkillsAuton() {
 }
 
 void constructTuningAuton() {
-	startPose = pose_t(0, 8, 90 * std::numbers::pi / 180.0);
+	startPose = pose_t(0, 8, 0 * std::numbers::pi / 180.0);
 	commandQueue.push(new InstantCommand([&]() { imu.tare(); }));
-	commandQueue.push(new DriveDeadReckon(driveBase, 20, 20, 100000));
+	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 90.0, 100000, 0, 1));
+	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 0.0, 100000, 0, 1));
+	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 180.0, 100000, 0, 1));
+	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 0.0, 100000, 0, 1));
+	// commandQueue.push(new DriveDeadReckon(driveBase, 20, 20, 100000));
 	// commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, 48.0, 5500)); 
 	commandQueue.push(new TimeoutCommand(100000));
 	// commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, -48.0,
@@ -788,18 +782,26 @@ void opcontrolInit() {
 		ColorSort current = cycler.getColorSort();
 		int currentVal = static_cast<int>(current);
 		ColorSort next;
+		const char* label;
 
 		if (currentVal == 0) {  // INACTIVE
 			next = static_cast<ColorSort>(1);  // RED
+			label = "SORT: RED";
 			printf("Switched to RED color sort mode\n");
 		} else if (currentVal == 1) {  // RED
 			next = static_cast<ColorSort>(2);  // BLUE
+			label = "SORT: BLUE";
 			printf("Switched to BLUE color sort mode\n");
 		} else {
 			next = static_cast<ColorSort>(0);  // INACTIVE
+			label = "SORT: OFF";
 			printf("Switched to INACTIVE color sort mode\n");
 		}
 		cycler.setColorSort(next);
+
+		controller.print(0, 0, "%-19s", label);
+		pros::delay(55);
+   		controller.rumble(".");
 	});
 
 	// Score Lower
@@ -878,29 +880,81 @@ void opcontrolInit() {
 
 #endif
 
-void robotInit() {
-	// constructTuningAuton();
+AutonSelector selector;
 
-	if (autonType == 0) {
-		if (isPurpleRobot) {
-			constructPurpleMatchAuton(isRedTeam);
+void autonSelectorInit() {
+	// Set default for quick testing - change this line as needed
+	selector.setDefault(3, AllianceColor::RED_ALLIANCE, StartingSide::LEFT);
+
+	selector.registerAuton(0, "Match", [](std::queue<Command *> &q,
+										  AllianceColor color,
+										  StartingSide side) {
+		bool isRed = (color == AllianceColor::RED_ALLIANCE);
+		if (side == StartingSide::RIGHT) {
+			constructPurpleMatchAuton(isRed);
 		} else {
-			constructRedMatchAuton(isRedTeam);
+			constructRedMatchAuton(isRed);
 		}
-	} else if (autonType == 1) {
-		if (isPurpleRobot) {
+	});
+
+	selector.registerAuton(1, "Skills", [](std::queue<Command *> &q,
+										   AllianceColor color,
+										   StartingSide side) {
+		if (side == StartingSide::RIGHT) {
 			constructPurpleSkillsAuton();
 		} else {
 			constructRedSkillsAuton();
 		}
-	} else {
-		if (isPurpleRobot) {
-			constructPurpleAWPAuton(isRedTeam);
-		} else {
-			constructRedAWPAuton(isRedTeam);
-		}
-	}
+	});
 
+	selector.registerAuton(2, "AWP", [](std::queue<Command *> &q,
+										AllianceColor color,
+										StartingSide side) {
+		bool isRed = (color == AllianceColor::RED_ALLIANCE);
+		if (side == StartingSide::RIGHT) {
+			constructPurpleAWPAuton(isRed);
+		} else {
+			constructRedAWPAuton(isRed);
+		}
+	});
+
+	selector.registerAuton(3, "Test", [](std::queue<Command *> &q,
+										 AllianceColor color,
+										 StartingSide side) {
+		startPose = pose_t(0, 0, 0);
+
+		// Color picks direction, side picks speed.
+		// RED  + LEFT  -> forward  25%
+		// RED  + RIGHT -> forward  75%
+		// BLUE + LEFT  -> reverse  25%
+		// BLUE + RIGHT -> reverse  75%
+		bool isRed = (color == AllianceColor::RED_ALLIANCE);
+		bool isRight = (side == StartingSide::RIGHT);
+		int direction = isRed ? 1 : -1;
+		int speed = isRight ? 75 : 25;
+		int pct = direction * speed;
+
+		commandQueue.push(new InstantCommand([pct, isRed, isRight]() {
+			printf("Test auton: color=%s side=%s pct=%d\n",
+				   isRed ? "RED" : "BLUE",
+				   isRight ? "RIGHT" : "LEFT",
+				   pct);
+		}));
+		commandQueue.push(new DriveDeadReckon(driveBase, pct, pct, 2000));
+		commandQueue.push(new TimeoutCommand(500));
+	});
+
+}
+
+void autonSelectorRun() {
+	selector.run();
+}
+
+void populateAutonQueue() {
+	selector.populateCommandQueue(commandQueue);
+}
+
+void robotInit() {
 	deviceInit();
 	setupCycler();
 }
