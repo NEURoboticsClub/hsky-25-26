@@ -299,7 +299,7 @@ void queueLoaderCycle(int deadReckonTime, uint8_t speedtPct = 100) {
 
 void queueScoreLong() {
 	commandQueue.push(
-		new DriveDistance(driveBase, odom, robotConfig, 37, 1500));
+		new DriveDistance(driveBase, odom, robotConfig, 37, 90.0, 1500));
 
 	commandQueue.push(
 		new DriveDeadReckon(driveBase, 50, 50, 250)
@@ -383,7 +383,7 @@ void constructPurpleMatchAuton(bool isRed) {
 
 	// First loader cycle
 	commandQueue.push(
-		new DriveDistance(driveBase, odom, robotConfig, -32.5, 1500));
+		new DriveDistance(driveBase, odom, robotConfig, -32.5, 180.0, 1500));
 	commandQueue.push(
 		new TurnToHeading(driveBase, odom, robotConfig, 90.0, 1500));
 
@@ -712,7 +712,7 @@ void constructTuningAuton() {
 	// commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 180.0, 100000, 0, 1));
 	// commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 0.0, 100000, 0, 1));
 	// commandQueue.push(new DriveDeadReckon(driveBase, 20, 20, 100000));
-	commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, 48.0, 100000)); 
+	commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, 48.0, 90.0, 100000)); 
 	commandQueue.push(new TimeoutCommand(100000));
 	// commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, -48.0,
 	// 5500));
