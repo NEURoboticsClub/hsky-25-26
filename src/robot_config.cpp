@@ -554,17 +554,17 @@ void awp(AllianceColor color, StartingSide side) {
 
 	// Drive towards goal, turn, intake from loaer
 	commandQueue.push(new InstantCommand([&]() {hood.extendPiston();}));
-	commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, -(48 - starting_offset - 0.5 * robot_length), angle, 2000));
+	commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, -(48 - starting_offset - 0.5 * robot_length + 1), angle, 2000));
 	commandQueue.push(new InstantCommand([&]() {hood.retractPiston();}));
 	angle = 90;
 	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, angle, 1000));
 	commandQueue.push(new InstantCommand([&]() {scraper.extendPiston();}));
 
-	commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, -(24 - scraper_extension_in - 0.5 * robot_width + 2),angle, 2000));
+	commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, -(24 - scraper_extension_in - 0.5 * robot_width - 3),angle, 2000));
 	commandQueue.push(new InstantCommand([&]() {intakeLoader();}));
 	commandQueue.push(new TimeoutCommand(load_time));
 	
-	commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, 24 - scraper_extension_in, angle, 2000));
+	commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, 15 - scraper_extension_in, angle, 2000));
 
 	commandQueue.push(new InstantCommand([&]() {
 		scraper.retractPiston();
@@ -597,7 +597,7 @@ void awp(AllianceColor color, StartingSide side) {
 	
 	
 	// Drive towards loader
-	commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, -50.90, angle, 3000));
+	commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, -48.90, angle, 3000));
 	angle = 90;
 	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, angle, 1000));
 
