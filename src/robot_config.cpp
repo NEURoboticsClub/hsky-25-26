@@ -30,7 +30,7 @@ CommandRunner *activeCommandRunner = nullptr;
 // ##################### Configuration #####################
 // ---------------------------------------------------------
 // Red starts on the left, Purple starts on the right
-#define RED_ROBOT  // RED_ROBOT, PURPLE_ROBOT
+#define PURPLE_ROBOT  // RED_ROBOT, PURPLE_ROBOT
 #define MATCH		  // MATCH, SKILLS, AWP
 #define RED_TEAM	  // RED, BLUE
 
@@ -107,7 +107,7 @@ const uint32_t FIELD_EJECT_WINDOW_MS = 50;
 #elifdef RED_ROBOT
 
 bool isPurpleRobot = false;
-StartingSide defaultSide = StartingSide::LEFT;
+StartingSide defaultSide = StartingSide::RIGHT;
 //===================== CONFIG =====================
 
 PIDFController drivePid(7.0, 0.0, 0, 0, PIDFController::ERROR_TYPE::LINEAR);
@@ -223,9 +223,7 @@ void intakeLoader() {
 	}
 }
 
-void intakeField() {
-	flap.retractPiston();
-
+void sort() {
 	ColorSort sortMode = cycler.getColorSort();
 	int sortVal = static_cast<int>(sortMode);
 
@@ -292,9 +290,12 @@ void intakeField() {
 	}
 }
 
-void ejectLower() {
+void intakeField() {
 	flap.retractPiston();
+	sort();
+}
 
+void ejectLower() {
 	ColorSort sortMode = cycler.getColorSort();
 	int sortVal = static_cast<int>(sortMode);
 
@@ -329,22 +330,19 @@ void ejectLower() {
 	bool inRange = opticalSensor.get_proximity() > 35;
 	
 	if (shouldEject) {
-		intake.moveOut();
+		intake.moveIn();
 		scraperIntake.moveOut();
-		upperScoring.moveOut();
+		upperScoring.moveIn();
 	} else {
-		intake.moveOut();
-		scraperIntake.stop();
-		upperScoring.moveOut();
+		intake.moveOut(70);
+		scraperIntake.moveOut(40);
+		upperScoring.moveIn();
 	}
 }
 
 void scoreLong() {
-	//    upperScoring.moveOut();
-	//    intake.moveIn();
-	//    scraperIntake.moveIn();
-	intakeField();
 	flap.extendPiston();
+	sort();
 }
 
 void scoreLower() {
@@ -594,6 +592,7 @@ void awp(AllianceColor color, StartingSide side) {
 
 	double angle = 0;
 
+
 	if (side == StartingSide::RIGHT) {
 		angle = 180;
 		startPose = pose_t(72 + robot_length / 2 + starting_offset, 17.5,
@@ -622,13 +621,18 @@ void awp(AllianceColor color, StartingSide side) {
 		driveBase, odom, robotConfig,
 		-(24 - scraper_extension_in - 0.5 * robot_width), angle, 1000));
 	commandQueue.push(new DriveDistance(
-		driveBase, odom, robotConfig, 1, angle, 1000));
+		driveBase, odom, robotConfig, 3, angle, 1000));
 	commandQueue.push(new DriveDistance(
-		driveBase, odom, robotConfig, -3, angle, 1000));
+		driveBase, odom, robotConfig, -5, angle, 1000));
 	commandQueue.push(new TimeoutCommand(load_time));
 
-	commandQueue.push(new DriveDistance(
-		driveBase, odom, robotConfig, 15 - scraper_extension_in, angle, 2000));
+	if (side == StartingSide::LEFT) {
+		commandQueue.push(new DriveDistance(
+			driveBase, odom, robotConfig, 12 - scraper_extension_in, angle, 2000));
+	} else {
+		commandQueue.push(new DriveDistance(
+			driveBase, odom, robotConfig, 13 - scraper_extension_in, angle, 2000));
+	}
 
 	commandQueue.push(new InstantCommand([&]() {
 		scraper.retractPiston();
@@ -665,6 +669,8 @@ void awp(AllianceColor color, StartingSide side) {
 		cycler.setColorSort((color == AllianceColor::RED_ALLIANCE) ? ColorSort::RED: ColorSort::BLUE);
 	}));
 	if (side == StartingSide::LEFT) {
+		commandQueue.push(
+			new DriveDistance(driveBase, odom, robotConfig, -1.5, angle, 1000));
 		commandQueue.push(new RepeatForTimeCommand([&]() { scoreLong(); }, 3000));
 	} else {
 		commandQueue.push(new RepeatForTimeCommand([&]() { ejectLower(); }, 3000));
@@ -672,33 +678,41 @@ void awp(AllianceColor color, StartingSide side) {
 	commandQueue.push(new InstantCommand([&]() {cycler.setColorSort(ColorSort::INACTIVE);}));
 
 	// Drive towards loader
+	if (side == StartingSide::LEFT) {
+		commandQueue.push(
+			new DriveDistance(driveBase, odom, robotConfig, -49, angle, 3000));
+	} else {
 	commandQueue.push(
-		new DriveDistance(driveBase, odom, robotConfig, -53, angle, 3000));
+		new DriveDistance(driveBase, odom, robotConfig, -52, angle, 3000));
+	}
 	angle = 90;
+	commandQueue.push(new InstantCommand([&]() { scraper.extendPiston(); }));
 	commandQueue.push(
 		new TurnToHeading(driveBase, odom, robotConfig, angle, 1000));
 	commandQueue.push(new InstantCommand([&]() { stopAll(); }));
 
 	// Intake from loader
-	commandQueue.push(new InstantCommand([&]() { scraper.extendPiston(); }));
 
 	commandQueue.push(new InstantCommand([&]() { intakeLoader(); }));
 	commandQueue.push(new DriveDistance(
 		driveBase, odom, robotConfig,
 		-(24 - scraper_extension_in - 0.5 * robot_width + 5), angle, 2000));
 	commandQueue.push(new DriveDistance(
-		driveBase, odom, robotConfig, 1, angle, 1000));
+		driveBase, odom, robotConfig, 3, angle, 1000));
 	commandQueue.push(new DriveDistance(
-		driveBase, odom, robotConfig, -3, angle, 1000));
+		driveBase, odom, robotConfig, -5, angle, 1000));
 	commandQueue.push(new TimeoutCommand(load_time));
 
 	// Drive and score on long goal
 	commandQueue.push(new InstantCommand([&]() { hood.extendPiston(); }));
 	commandQueue.push(
-		new DriveDistance(driveBase, odom, robotConfig, 50, angle, 3000));
+		new DriveDistance(driveBase, odom, robotConfig, 50, angle, 2000));
 	commandQueue.push(
-		new DriveDistance(driveBase, odom, robotConfig, -1.5, angle, 1000));
-	commandQueue.push(new InstantCommand([&]() { scoreLong(); }));
+		new DriveDistance(driveBase, odom, robotConfig, -2.5, angle, 1000));
+	commandQueue.push(new RepeatForTimeCommand([&]() { scoreLong(); }, 2000));
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, 5, angle, 1000));
+	commandQueue.push(new RepeatForTimeCommand([&]() { scoreLong(); }, 2000));
 	commandQueue.push(new TimeoutCommand(3000));
 	commandQueue.push(new InstantCommand([&]() { stopAll(); }));
 	commandQueue.push(new TimeoutCommand(100000));
@@ -810,7 +824,7 @@ AutonSelector selector;
 
 void autonSelectorInit() {
 	// Set default for quick testing - change this line as needed
-	selector.setDefault(0, AllianceColor::RED_ALLIANCE, defaultSide); 
+	selector.setDefault(0, AllianceColor::BLUE_ALLIANCE, defaultSide); 
 
 	selector.registerAuton(0, "AWP",
 						   [](std::queue<Command *> &q, AllianceColor color,
