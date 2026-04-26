@@ -1,7 +1,5 @@
 #include "robot_config.hpp"
 
-#include <cmath>
-#include <cstdio>
 #include <hskylib/robot_specs.h>
 #include <hskylib/subsystems/pneumatics.h>
 #include <hskylib/ui/auton_selector.h>
@@ -10,8 +8,11 @@
 #include <hskylib/utils/commands/drive_commands.h>
 #include <hskylib/utils/utils.h>
 
-#include "hskylib/utils/color_reader.h"
+#include <cmath>
+#include <cstdio>
+
 #include "hskylib/subsystems/cycler.h"
+#include "hskylib/utils/color_reader.h"
 #include "pros/adi.h"
 #include "pros/adi.hpp"
 #include "pros/motors.h"
@@ -22,16 +23,16 @@ HskyController controller(pros::E_CONTROLLER_MASTER);
 std::queue<Command *> commandQueue;
 std::optional<pose_t> startPose;
 bool isAutonomousRunning = false;
-pros::Task* failsafeTask = nullptr;
-CommandRunner* activeCommandRunner = nullptr;
+pros::Task *failsafeTask = nullptr;
+CommandRunner *activeCommandRunner = nullptr;
 
 // ---------------------------------------------------------
 // ##################### Configuration #####################
 // ---------------------------------------------------------
 // Red starts on the left, Purple starts on the right
-#define PURPLE_ROBOT // RED_ROBOT, PURPLE_ROBOT
-#define MATCH // MATCH, SKILLS, AWP
-#define RED_TEAM // RED, BLUE
+#define PURPLE_ROBOT  // RED_ROBOT, PURPLE_ROBOT
+#define MATCH		  // MATCH, SKILLS, AWP
+#define RED_TEAM	  // RED, BLUE
 
 //---------------------------------------------------
 // ##################### Robot 1 #####################
@@ -64,7 +65,7 @@ pros::IMU imu(13);
 
 pros::MotorGroup intakeMotors({12, -20});
 pros::MotorGroup scraperIntakeMotors({-17});
-pros::MotorGroup upperScoringMotors({-18, 19}); // 18 is fried
+pros::MotorGroup upperScoringMotors({-18, 19});	 // 18 is fried
 
 pros::adi::DigitalOut scraperCylinder('a');
 pros::adi::DigitalOut hoodCylinder('b');
@@ -85,12 +86,11 @@ TankDrive driveBase(leftDriveMotors, rightDriveMotors,
 					pros::E_MOTOR_BRAKE_COAST, pros::E_MOTOR_GEAR_600, 1.0,
 					0.75);
 Transport intake(intakeMotors, 1, pros::E_MOTOR_BRAKE_COAST,
-					  pros::E_MOTOR_GEAR_600);
+				 pros::E_MOTOR_GEAR_600);
 Transport scraperIntake(scraperIntakeMotors, 1, pros::E_MOTOR_BRAKE_COAST,
-                      pros::E_MOTOR_GEAR_600);
+						pros::E_MOTOR_GEAR_600);
 Transport upperScoring(upperScoringMotors, 1, pros::E_MOTOR_BRAKE_COAST,
-                      pros::E_MOTOR_GEAR_600);
-
+					   pros::E_MOTOR_GEAR_600);
 
 Pneumatics scraper(scraperCylinder);
 Pneumatics hood(hoodCylinder);
@@ -152,12 +152,11 @@ TankDrive driveBase(leftDriveMotors, rightDriveMotors,
 					pros::E_MOTOR_BRAKE_COAST, pros::E_MOTOR_GEAR_600, 1.0,
 					0.75);
 Transport intake(intakeMotors, 1, pros::E_MOTOR_BRAKE_COAST,
-					  pros::E_MOTOR_GEAR_600);
+				 pros::E_MOTOR_GEAR_600);
 Transport scraperIntake(scraperIntakeMotors, 1, pros::E_MOTOR_BRAKE_COAST,
-                      pros::E_MOTOR_GEAR_600);
+						pros::E_MOTOR_GEAR_600);
 Transport upperScoring(upperScoringMotors, 1, pros::E_MOTOR_BRAKE_COAST,
-                      pros::E_MOTOR_GEAR_600);
-
+					   pros::E_MOTOR_GEAR_600);
 
 Pneumatics scraper(scraperCylinder);
 Pneumatics hood(hoodCylinder);
@@ -181,7 +180,7 @@ bool isRedTeam = false;
 int autonType = 0;
 #elifdef SKILLS
 int autonType = 1;
-#else // AWP
+#else  // AWP
 int autonType = 2;
 #endif
 
@@ -194,13 +193,12 @@ void deviceInit() {
 
 	imu.reset();
 	double startTime = pros::millis();
-	while (imu.is_calibrating() || !std::isfinite(imu.get_heading()) && pros::millis() - startTime < 2000) {
+	while (imu.is_calibrating() || !std::isfinite(imu.get_heading()) &&
+									   pros::millis() - startTime < 2000) {
 		printf("Calibrating IMU");
 		pros::delay(20);
 	}
 }
-
-
 
 void intakeLoader() {
 	flap.retractPiston();
@@ -212,8 +210,10 @@ void intakeLoader() {
 	int sortVal = static_cast<int>(sortMode);
 
 	ColorType wrongColor = (sortVal == 1) ? ColorType::BLUE : ColorType::RED;
-	uint32_t msSinceWrongColor = pros::millis() - colorReader.getLastDetectionTime(wrongColor);
-	bool shouldEject = (sortVal != 0) && (msSinceWrongColor < LOADER_EJECT_WINDOW_MS);
+	uint32_t msSinceWrongColor =
+		pros::millis() - colorReader.getLastDetectionTime(wrongColor);
+	bool shouldEject =
+		(sortVal != 0) && (msSinceWrongColor < LOADER_EJECT_WINDOW_MS);
 
 	if (shouldEject) {
 		intake.moveOut();
@@ -223,7 +223,6 @@ void intakeLoader() {
 	}
 }
 
-
 void intakeField() {
 	flap.retractPiston();
 
@@ -231,7 +230,8 @@ void intakeField() {
 	int sortVal = static_cast<int>(sortMode);
 
 	ColorType wrongColor = (sortVal == 1) ? ColorType::BLUE : ColorType::RED;
-	uint32_t msSinceWrongColor = pros::millis() - colorReader.getLastDetectionTime(wrongColor);
+	uint32_t msSinceWrongColor =
+		pros::millis() - colorReader.getLastDetectionTime(wrongColor);
 
 	constexpr uint32_t CORRECT_COLOR_OVERRIDE_MS = 10;
 	constexpr uint32_t STOP_DELAY_MS = 50;
@@ -239,9 +239,13 @@ void intakeField() {
 	ColorType correctColor = (sortVal == 1) ? ColorType::RED : ColorType::BLUE;
 	uint32_t lastWrongTime = colorReader.getLastDetectionTime(wrongColor);
 	uint32_t lastCorrectTime = colorReader.getLastDetectionTime(correctColor);
-	//bool correctOverride = (lastCorrectTime + CORRECT_COLOR_OVERRIDE_MS >= lastWrongTime);
-	bool shouldEject = (sortVal != 0) && (msSinceWrongColor < FIELD_EJECT_WINDOW_MS);
-	bool correctOverride = (sortVal != 0) && (lastCorrectTime > lastWrongTime) && (pros::millis() - lastCorrectTime < CORRECT_COLOR_OVERRIDE_MS);
+	// bool correctOverride = (lastCorrectTime + CORRECT_COLOR_OVERRIDE_MS >=
+	// lastWrongTime);
+	bool shouldEject =
+		(sortVal != 0) && (msSinceWrongColor < FIELD_EJECT_WINDOW_MS);
+	bool correctOverride =
+		(sortVal != 0) && (lastCorrectTime > lastWrongTime) &&
+		(pros::millis() - lastCorrectTime < CORRECT_COLOR_OVERRIDE_MS);
 
 	if (sortVal == 0) {
 		intake.moveIn();
@@ -251,17 +255,18 @@ void intakeField() {
 	}
 
 	// Optional unstuck
-	// TODO should check if there's the wrong color or nothing in the color sensor area before trying)
+	// TODO should check if there's the wrong color or nothing in the color
+	// sensor area before trying)
 	bool inRange = opticalSensor.get_proximity() > 35;
 	bool isStopped = false;
-		for (int i = 0; i < intakeMotors.size(); i++) {
-			double intake_motor_speed = abs(intakeMotors.get_actual_velocity(i));
-			if (intake_motor_speed < INTAKE_SPEED_THRESOLD_RPM) {
-				isStopped = true;
-				break;
-			}
+	for (int i = 0; i < intakeMotors.size(); i++) {
+		double intake_motor_speed = abs(intakeMotors.get_actual_velocity(i));
+		if (intake_motor_speed < INTAKE_SPEED_THRESOLD_RPM) {
+			isStopped = true;
+			break;
 		}
-	if (isStopped || (!inRange && shouldEject)){ 
+	}
+	if (isStopped || (!inRange && shouldEject)) {
 		intake.moveOut(35);
 		pros::delay(10);
 		return;
@@ -288,55 +293,57 @@ void intakeField() {
 }
 
 void scoreLong() {
-//    upperScoring.moveOut();
-//    intake.moveIn();
-//    scraperIntake.moveIn();
+	//    upperScoring.moveOut();
+	//    intake.moveIn();
+	//    scraperIntake.moveIn();
 	intakeField();
 	flap.extendPiston();
 }
 
 void scoreLower() {
-   scraper.retractPiston();
-   upperScoring.moveIn();
-   intake.moveOut();
-   scraperIntake.moveOut();
+	scraper.retractPiston();
+	upperScoring.moveIn();
+	intake.moveOut();
+	scraperIntake.moveOut();
 }
 
 void stopAll() {
-   scraperIntake.stop();
-   upperScoring.stop();
-   scraperIntake.stop();
-   intake.stop();
+	scraperIntake.stop();
+	upperScoring.stop();
+	scraperIntake.stop();
+	intake.stop();
 }
 
 void constructTuningAuton() {
 	startPose = pose_t(0, 0, 0 * std::numbers::pi / 180.0);
 	commandQueue.push(new InstantCommand([&]() { imu.tare(); }));
-	// commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 90.0, 100000, 0, 1));
-	// commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 0.0, 100000, 0, 1));
-	// commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 180.0, 100000, 0, 1));
-	// commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 0.0, 100000, 0, 1));
-	// commandQueue.push(new DriveDeadReckon(driveBase, 20, 20, 100000));
-	commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, 48.0, 90.0, 100000)); 
+	// commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 90.0,
+	// 100000, 0, 1)); commandQueue.push(new TurnToHeading(driveBase, odom,
+	// robotConfig, 0.0, 100000, 0, 1)); commandQueue.push(new
+	// TurnToHeading(driveBase, odom, robotConfig, 180.0, 100000, 0, 1));
+	// commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 0.0,
+	// 100000, 0, 1)); commandQueue.push(new DriveDeadReckon(driveBase, 20, 20,
+	// 100000));
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, 48.0, 90.0, 100000));
 	commandQueue.push(new TimeoutCommand(100000));
 	// commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, -48.0,
 	// 5500));
 
 	// commandQueue.push(new InstantCommand([&]() { imu.tare(); }));
 	// commandQueue.push(new TimeoutCommand(100));
-	// commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, 10.0, 99999));
-	// commandQueue.push(new TimeoutCommand(1000));
-	// commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, -10.0, 99999));
-	// commandQueue.push(new TurnToHeading())
-	// for (int i = 0; i < 4; i++) {
-	// commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 45, 1250));
-	// commandQueue.push(new TimeoutCommand(1000));
-	// commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 0, 1250));
-	// commandQueue.push(new TimeoutCommand(1000));
-	// commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 90, 1250));
-	// commandQueue.push(new TimeoutCommand(1000));
-	// commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 0, 1250));
-	// commandQueue.push(new TimeoutCommand(1000));
+	// commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, 10.0,
+	// 99999)); commandQueue.push(new TimeoutCommand(1000));
+	// commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, -10.0,
+	// 99999)); commandQueue.push(new TurnToHeading()) for (int i = 0; i < 4;
+	// i++) { commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig,
+	// 45, 1250)); commandQueue.push(new TimeoutCommand(1000));
+	// commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 0,
+	// 1250)); commandQueue.push(new TimeoutCommand(1000));
+	// commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 90,
+	// 1250)); commandQueue.push(new TimeoutCommand(1000));
+	// commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, 0,
+	// 1250)); commandQueue.push(new TimeoutCommand(1000));
 	// }
 	// commandQueue.push(
 	// 	new DriveDistance(driveBase, odom, robotConfig, 20.0, 1500));
@@ -396,9 +403,7 @@ void opcontrolInit() {
 	});
 
 	// Score High
-	controller.ButtonL2.onHold([]() { 
-		scoreLong();
-	});
+	controller.ButtonL2.onHold([]() { scoreLong(); });
 	controller.ButtonL2.onReleased([]() { stopAll(); });
 
 	// Score Low
@@ -411,8 +416,8 @@ void opcontrolInit() {
 
 	// Intake Loader
 	controller.ButtonL1.onHold([]() { intakeLoader(); });
-	controller.ButtonL1.onReleased([]() { 
-		stopAll(); 
+	controller.ButtonL1.onReleased([]() {
+		stopAll();
 		scraper.retractPiston();
 	});
 
@@ -421,13 +426,13 @@ void opcontrolInit() {
 		ColorSort current = cycler.getColorSort();
 		int currentVal = static_cast<int>(current);
 		ColorSort next;
-		const char* label;
+		const char *label;
 
-		if (currentVal == 0) {  // INACTIVE
+		if (currentVal == 0) {				   // INACTIVE
 			next = static_cast<ColorSort>(1);  // RED
 			label = "SORT: RED";
 			printf("Switched to RED color sort mode\n");
-		} else if (currentVal == 1) {  // RED
+		} else if (currentVal == 1) {		   // RED
 			next = static_cast<ColorSort>(2);  // BLUE
 			label = "SORT: BLUE";
 			printf("Switched to BLUE color sort mode\n");
@@ -440,7 +445,7 @@ void opcontrolInit() {
 
 		controller.print(0, 0, "%-19s", label);
 		pros::delay(55);
-   		controller.rumble(".");
+		controller.rumble(".");
 	});
 
 	stopAll();
@@ -483,9 +488,7 @@ void opcontrolInit() {
 	});
 
 	// Score High
-	controller.ButtonR2.onHold([]() { 
-		scoreLong();
-	});
+	controller.ButtonR2.onHold([]() { scoreLong(); });
 	controller.ButtonR2.onReleased([]() { stopAll(); });
 
 	// Score Low
@@ -498,8 +501,8 @@ void opcontrolInit() {
 
 	// Intake Loader
 	controller.ButtonL2.onHold([]() { intakeLoader(); });
-	controller.ButtonL2.onReleased([]() { 
-		stopAll(); 
+	controller.ButtonL2.onReleased([]() {
+		stopAll();
 		scraper.retractPiston();
 	});
 
@@ -508,13 +511,13 @@ void opcontrolInit() {
 		ColorSort current = cycler.getColorSort();
 		int currentVal = static_cast<int>(current);
 		ColorSort next;
-		const char* label;
+		const char *label;
 
-		if (currentVal == 0) {  // INACTIVE
+		if (currentVal == 0) {				   // INACTIVE
 			next = static_cast<ColorSort>(1);  // RED
 			label = "SORT: RED";
 			printf("Switched to RED color sort mode\n");
-		} else if (currentVal == 1) {  // RED
+		} else if (currentVal == 1) {		   // RED
 			next = static_cast<ColorSort>(2);  // BLUE
 			label = "SORT: BLUE";
 			printf("Switched to BLUE color sort mode\n");
@@ -527,7 +530,7 @@ void opcontrolInit() {
 
 		controller.print(0, 0, "%-19s", label);
 		pros::delay(55);
-   		controller.rumble(".");
+		controller.rumble(".");
 	});
 
 	stopAll();
@@ -546,10 +549,12 @@ void awp(AllianceColor color, StartingSide side) {
 
 	if (side == StartingSide::RIGHT) {
 		angle = 180;
-		startPose = pose_t(72 + robot_length / 2 + starting_offset, 30, angle * std::numbers::pi / 180.0);
+		startPose = pose_t(72 + robot_length / 2 + starting_offset, 30,
+						   angle * std::numbers::pi / 180.0);
 	} else if (side == StartingSide::LEFT) {
 		angle = 0;
-		startPose = pose_t(72 - robot_length / 2 - starting_offset, 30, angle * std::numbers::pi / 180.0);
+		startPose = pose_t(72 - robot_length / 2 - starting_offset, 30,
+						   angle * std::numbers::pi / 180.0);
 	}
 
 	// Drive towards goal, turn, intake from loaer
@@ -557,66 +562,77 @@ void awp(AllianceColor color, StartingSide side) {
 		imu.tare();
 		hood.extendPiston();
 	}));
-	commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, -(48 - starting_offset - 0.5 * robot_length + 1), angle, 2000));
-	commandQueue.push(new InstantCommand([&]() {hood.retractPiston();}));
+	commandQueue.push(new DriveDistance(
+		driveBase, odom, robotConfig,
+		-(48 - starting_offset - 0.5 * robot_length + 1), angle, 2000));
+	commandQueue.push(new InstantCommand([&]() { hood.retractPiston(); }));
 	angle = 90;
-	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, angle, 1000));
-	commandQueue.push(new InstantCommand([&]() {scraper.extendPiston();}));
+	commandQueue.push(
+		new TurnToHeading(driveBase, odom, robotConfig, angle, 1000));
+	commandQueue.push(new InstantCommand([&]() { scraper.extendPiston(); }));
 
-	commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, -(24 - scraper_extension_in - 0.5 * robot_width - 3),angle, 2000));
-	commandQueue.push(new InstantCommand([&]() {intakeLoader();}));
+	commandQueue.push(new DriveDistance(
+		driveBase, odom, robotConfig,
+		-(24 - scraper_extension_in - 0.5 * robot_width - 3), angle, 2000));
+	commandQueue.push(new InstantCommand([&]() { intakeLoader(); }));
 	commandQueue.push(new TimeoutCommand(load_time));
-	
-	commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, 12 - scraper_extension_in, angle, 2000));
+
+	commandQueue.push(new DriveDistance(
+		driveBase, odom, robotConfig, 12 - scraper_extension_in, angle, 2000));
 
 	commandQueue.push(new InstantCommand([&]() {
 		scraper.retractPiston();
 		stopAll();
 	}));
 
-	// Turn to center goal, drive and sort out blocks 
+	// Turn to center goal, drive and sort out blocks
 	angle = (side == StartingSide::LEFT) ? 45 : 135;
-	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, angle, 1000));
+	commandQueue.push(
+		new TurnToHeading(driveBase, odom, robotConfig, angle, 1000));
 
 	// Sort out blocks
 	commandQueue.push(new InstantCommand([&]() {
 		upperScoring.moveIn();
 		scraperIntake.moveOut();
 	}));
-	commandQueue.push(new WaitUntilColorSensor(colorReader, color == AllianceColor::RED_ALLIANCE, 2000));
-	commandQueue.push(new InstantCommand([&]() {stopAll();}));
+	commandQueue.push(new WaitUntilColorSensor(
+		colorReader, color == AllianceColor::RED_ALLIANCE, 2000));
+	commandQueue.push(new InstantCommand([&]() { stopAll(); }));
 
 	// Drive to center
-	commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, 53.75, angle, 3000));
-		
-	//Score in center
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, 53.75, angle, 3000));
+
+	// Score in center
 	if (side == StartingSide::LEFT) {
-		commandQueue.push(new InstantCommand([&]() {scoreLong();}));
+		commandQueue.push(new InstantCommand([&]() { scoreLong(); }));
 	} else {
-		commandQueue.push(new InstantCommand([&]() {scoreLower();}));
+		commandQueue.push(new InstantCommand([&]() { scoreLower(); }));
 	}
 	commandQueue.push(new TimeoutCommand(3000));
-	commandQueue.push(new InstantCommand([&]() {stopAll();}));
-	
-	
+	commandQueue.push(new InstantCommand([&]() { stopAll(); }));
+
 	// Drive towards loader
-	commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, -47, angle, 3000));
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, -47, angle, 3000));
 	angle = 90;
-	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, angle, 1000));
+	commandQueue.push(
+		new TurnToHeading(driveBase, odom, robotConfig, angle, 1000));
 
 	// Intake from loader
-	commandQueue.push(new InstantCommand([&]() {scraper.extendPiston();}));
+	commandQueue.push(new InstantCommand([&]() { scraper.extendPiston(); }));
 
-	commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, -(24 - scraper_extension_in - 0.5 * robot_width + 2),angle, 2000));
-	commandQueue.push(new InstantCommand([&]() {intakeLoader();}));
+	commandQueue.push(new DriveDistance(
+		driveBase, odom, robotConfig,
+		-(24 - scraper_extension_in - 0.5 * robot_width + 2), angle, 2000));
+	commandQueue.push(new InstantCommand([&]() { intakeLoader(); }));
 	commandQueue.push(new TimeoutCommand(load_time));
 
 	// Drive and score on long goal
-	commandQueue.push(new InstantCommand([&]() {hood.extendPiston();}));
-	commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, 50 , angle, 3000));
-	commandQueue.push(new InstantCommand([&]() {
-		scoreLong();
-	}));
+	commandQueue.push(new InstantCommand([&]() { hood.extendPiston(); }));
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, 50, angle, 3000));
+	commandQueue.push(new InstantCommand([&]() { scoreLong(); }));
 	commandQueue.push(new TimeoutCommand(3000));
 	commandQueue.push(new InstantCommand([&]() { stopAll(); }));
 	commandQueue.push(new TimeoutCommand(100000));
@@ -630,17 +646,19 @@ void ucf(AllianceColor color, StartingSide side) {
 		startPose = pose_t(94, 8, angle * std::numbers::pi / 180.0);
 	}
 
-	commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, 80, angle, 4000));
-	angle = (side == StartingSide::LEFT) ? 315: 225;
-	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, angle, 2000));
-	commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, 5, angle, 1000));
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, 80, angle, 4000));
+	angle = (side == StartingSide::LEFT) ? 315 : 225;
+	commandQueue.push(
+		new TurnToHeading(driveBase, odom, robotConfig, angle, 2000));
+	commandQueue.push(
+		new DriveDistance(driveBase, odom, robotConfig, 5, angle, 1000));
 
-	
 	// Score in center
 	if (side == StartingSide::LEFT) {
-		commandQueue.push(new InstantCommand([&]() {scoreLower();}));
+		commandQueue.push(new InstantCommand([&]() { scoreLower(); }));
 	} else {
-		commandQueue.push(new InstantCommand([&]() {scoreLong();}));
+		commandQueue.push(new InstantCommand([&]() { scoreLong(); }));
 	}
 	commandQueue.push(new TimeoutCommand(5000));
 	commandQueue.push(new InstantCommand([&]() { stopAll(); }));
@@ -653,27 +671,18 @@ void autonSelectorInit() {
 	// Set default for quick testing - change this line as needed
 	selector.setDefault(0, AllianceColor::BLUE_ALLIANCE, defaultSide);
 
-	selector.registerAuton(0, "AWP", [](std::queue<Command *> &q,
-										AllianceColor color,
-										StartingSide side) {
-		awp(color, side);
-	});
+	selector.registerAuton(0, "AWP",
+						   [](std::queue<Command *> &q, AllianceColor color,
+							  StartingSide side) { awp(color, side); });
 
-	selector.registerAuton(1, "UCF", [](std::queue<Command *> &q,
-										 AllianceColor color,
-										 StartingSide side) {
-		ucf(color, side);
-	});
-
+	selector.registerAuton(1, "UCF",
+						   [](std::queue<Command *> &q, AllianceColor color,
+							  StartingSide side) { ucf(color, side); });
 }
 
-void autonSelectorRun() {
-	selector.run();
-}
+void autonSelectorRun() { selector.run(); }
 
-void populateAutonQueue() {
-	selector.populateCommandQueue(commandQueue);
-}
+void populateAutonQueue() { selector.populateCommandQueue(commandQueue); }
 
 void robotInit() {
 	deviceInit();
