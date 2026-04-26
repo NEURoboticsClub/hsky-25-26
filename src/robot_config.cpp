@@ -29,7 +29,7 @@ CommandRunner* activeCommandRunner = nullptr;
 // ##################### Configuration #####################
 // ---------------------------------------------------------
 // Red starts on the left, Purple starts on the right
-#define RED_ROBOT // RED_ROBOT, PURPLE_ROBOT
+#define PURPLE_ROBOT // RED_ROBOT, PURPLE_ROBOT
 #define MATCH // MATCH, SKILLS, AWP
 #define RED_TEAM // RED, BLUE
 
@@ -62,7 +62,7 @@ pros::MotorGroup rightDriveMotors({-1, 2, -3, 4, -5});
 
 pros::IMU imu(13);
 
-pros::MotorGroup intakeMotors({12, 13, -20}); // 12 doesn't work currently
+pros::MotorGroup intakeMotors({12, -20});
 pros::MotorGroup scraperIntakeMotors({-17});
 pros::MotorGroup upperScoringMotors({-18, 19}); // 18 is fried
 
@@ -376,7 +376,7 @@ void opcontrolInit() {
 	});
 
 	// Hood
-	controller.ButtonR1.onPressed([]() {
+	controller.ButtonY.onPressed([]() {
 		hoodToggle = !hoodToggle;
 		if (hoodToggle) {
 			hood.extendPiston();
@@ -396,22 +396,22 @@ void opcontrolInit() {
 	});
 
 	// Score High
-	controller.ButtonR2.onHold([]() { 
+	controller.ButtonL2.onHold([]() { 
 		scoreLong();
 	});
-	controller.ButtonR2.onReleased([]() { stopAll(); });
+	controller.ButtonL2.onReleased([]() { stopAll(); });
 
 	// Score Low
-	controller.ButtonY.onPressed([]() { scoreLower(); });
-	controller.ButtonY.onReleased([]() { stopAll(); });
+	controller.ButtonR2.onPressed([]() { scoreLower(); });
+	controller.ButtonR2.onReleased([]() { stopAll(); });
 
 	// Intake Field
-	controller.ButtonL1.onHold([]() { intakeField(); });
-	controller.ButtonL1.onReleased([]() { stopAll(); });
+	controller.ButtonR1.onHold([]() { intakeField(); });
+	controller.ButtonR1.onReleased([]() { stopAll(); });
 
 	// Intake Loader
-	controller.ButtonL2.onHold([]() { intakeLoader(); });
-	controller.ButtonL2.onReleased([]() { 
+	controller.ButtonL1.onHold([]() { intakeLoader(); });
+	controller.ButtonL1.onReleased([]() { 
 		stopAll(); 
 		scraper.retractPiston();
 	});
@@ -553,7 +553,10 @@ void awp(AllianceColor color, StartingSide side) {
 	}
 
 	// Drive towards goal, turn, intake from loaer
-	commandQueue.push(new InstantCommand([&]() {hood.extendPiston();}));
+	commandQueue.push(new InstantCommand([&]() {
+		imu.tare();
+		hood.extendPiston();
+	}));
 	commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, -(48 - starting_offset - 0.5 * robot_length + 1), angle, 2000));
 	commandQueue.push(new InstantCommand([&]() {hood.retractPiston();}));
 	angle = 90;
@@ -564,7 +567,7 @@ void awp(AllianceColor color, StartingSide side) {
 	commandQueue.push(new InstantCommand([&]() {intakeLoader();}));
 	commandQueue.push(new TimeoutCommand(load_time));
 	
-	commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, 15 - scraper_extension_in, angle, 2000));
+	commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, 12 - scraper_extension_in, angle, 2000));
 
 	commandQueue.push(new InstantCommand([&]() {
 		scraper.retractPiston();
@@ -597,7 +600,7 @@ void awp(AllianceColor color, StartingSide side) {
 	
 	
 	// Drive towards loader
-	commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, -48.90, angle, 3000));
+	commandQueue.push(new DriveDistance(driveBase, odom, robotConfig, -47, angle, 3000));
 	angle = 90;
 	commandQueue.push(new TurnToHeading(driveBase, odom, robotConfig, angle, 1000));
 
@@ -648,7 +651,7 @@ AutonSelector selector;
 
 void autonSelectorInit() {
 	// Set default for quick testing - change this line as needed
-	selector.setDefault(0, AllianceColor::RED_ALLIANCE, defaultSide);
+	selector.setDefault(0, AllianceColor::BLUE_ALLIANCE, defaultSide);
 
 	selector.registerAuton(0, "AWP", [](std::queue<Command *> &q,
 										AllianceColor color,
