@@ -30,7 +30,7 @@ CommandRunner *activeCommandRunner = nullptr;
 // ##################### Configuration #####################
 // ---------------------------------------------------------
 // Red starts on the left, Purple starts on the right
-#define PURPLE_ROBOT  // RED_ROBOT, PURPLE_ROBOT
+#define RED_ROBOT  // RED_ROBOT, PURPLE_ROBOT
 #define MATCH		  // MATCH, SKILLS, AWP
 #define RED_TEAM	  // RED, BLUE
 
