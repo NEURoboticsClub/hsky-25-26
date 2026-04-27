@@ -204,22 +204,34 @@ void intakeLoader() {
 	flap.retractPiston();
 	upperScoring.moveOut();
 	scraper.extendPiston();
-	scraperIntake.moveIn(50);
+	scraperIntake.moveIn();
 
 	ColorSort sortMode = cycler.getColorSort();
 	int sortVal = static_cast<int>(sortMode);
 
 	ColorType wrongColor = (sortVal == 1) ? ColorType::BLUE : ColorType::RED;
+	ColorType correctColor = (sortVal == 1) ? ColorType::RED : ColorType::BLUE;
 	uint32_t msSinceWrongColor =
 		pros::millis() - colorReader.getLastDetectionTime(wrongColor);
 	bool shouldEject =
 		(sortVal != 0) && (msSinceWrongColor < LOADER_EJECT_WINDOW_MS);
+	
+	bool inRange = opticalSensor.get_proximity() > 40;
+	bool correctOverride =
+		(sortVal != 0) && (colorReader.getLastDetectionTime(correctColor) >
+							colorReader.getLastDetectionTime(wrongColor)) &&
+		(pros::millis() - colorReader.getLastDetectionTime(correctColor) <
+		 LOADER_EJECT_WINDOW_MS);
 
-	if (shouldEject) {
+	if (shouldEject && !correctOverride) {
 		intake.moveOut();
-		printf("Ejecting wrong color ball\n");
+		scraperIntake.moveIn();
+		upperScoring.stop();
+		printf("Ejecting wrong color ball from loader\n");
 	} else {
 		intake.moveIn();
+		scraperIntake.moveIn();
+		upperScoring.moveOut(70);
 	}
 }
 
@@ -329,14 +341,29 @@ void ejectLower() {
 	// sensor area before trying)
 	bool inRange = opticalSensor.get_proximity() > 35;
 	
-	if (shouldEject) {
+	// if (shouldEject) {
+	// 	intake.moveIn();
+	// 	scraperIntake.moveOut();
+	// 	upperScoring.moveIn();
+	// } else if (correctOverride) {
+	// 	intake.moveOut(70);
+	// 	scraperIntake.moveOut(40);
+	// 	upperScoring.moveIn();
+	// 	// printf("Overriding eject due to correct color detection\n");
+	// } 
+	// else {
+	// 	intake.moveOut(70);
+	// 	scraperIntake.moveOut(40);
+	// 	upperScoring.moveIn();
+	// }
+		if (shouldEject) {
 		intake.moveIn();
 		scraperIntake.moveOut();
 		upperScoring.moveIn();
 	} else {
-		intake.moveOut(70);
-		scraperIntake.moveOut(40);
-		upperScoring.moveIn();
+		intake.stop();
+		scraperIntake.stop();
+		upperScoring.stop();
 	}
 }
 
@@ -592,7 +619,6 @@ void awp(AllianceColor color, StartingSide side) {
 
 	double angle = 0;
 
-
 	if (side == StartingSide::RIGHT) {
 		angle = 180;
 		startPose = pose_t(72 + robot_length / 2 + starting_offset, 17.5,
@@ -602,6 +628,7 @@ void awp(AllianceColor color, StartingSide side) {
 		startPose = pose_t(72 - robot_length / 2 - starting_offset, 17.5,
 						   angle * std::numbers::pi / 180.0);
 	}
+
 
 	// Drive towards goal, turn, intake from loaer
 	commandQueue.push(new InstantCommand([&]() {
@@ -616,15 +643,24 @@ void awp(AllianceColor color, StartingSide side) {
 	angle = 90;
 	commandQueue.push(
 		new TurnToHeading(driveBase, odom, robotConfig, angle, 1000));
-	commandQueue.push(new InstantCommand([&]() { intakeLoader(); }));
+	
+	// Intake Loader
+	commandQueue.push(new InstantCommand([&]() {
+		cycler.setColorSort((color == AllianceColor::RED_ALLIANCE) ? ColorSort::RED: ColorSort::BLUE);
+	}));
+	commandQueue.push(new RepeatForTimeCommand([&]() { intakeLoader(); }, 100));
 	commandQueue.push(new DriveDistance(
 		driveBase, odom, robotConfig,
 		-(24 - scraper_extension_in - 0.5 * robot_width), angle, 1000));
+	commandQueue.push(new RepeatForTimeCommand([&]() { intakeLoader(); }, 1500));
+
 	commandQueue.push(new DriveDistance(
-		driveBase, odom, robotConfig, 3, angle, 1000));
+		driveBase, odom, robotConfig, 3, angle, 500));
 	commandQueue.push(new DriveDistance(
-		driveBase, odom, robotConfig, -5, angle, 1000));
-	commandQueue.push(new TimeoutCommand(load_time));
+		driveBase, odom, robotConfig, -5, angle, 500));
+	commandQueue.push(new RepeatForTimeCommand([&]() { intakeLoader(); }, 1000));
+	commandQueue.push(new InstantCommand([&]() {cycler.setColorSort(ColorSort::INACTIVE);}));
+
 
 	if (side == StartingSide::LEFT) {
 		commandQueue.push(new DriveDistance(
@@ -648,34 +684,18 @@ void awp(AllianceColor color, StartingSide side) {
 		commandQueue.push(new InstantCommand([&]() {flap.extendPiston();}));
 	}
 
-	// // Sort out blocks
-	// commandQueue.push(new InstantCommand([&]() {
-	// 	upperScoring.moveIn(60);
-	// 	scraperIntake.moveOut(60);
-	// }));
-	// commandQueue.push(new WaitUntilColorSensor(
-	// 	colorReader, color == AllianceColor::RED_ALLIANCE, 2000));
-	// commandQueue.push(new InstantCommand([&]() { 
-	// 	stopAll(); 
-	// 	intakeField();
-	// }));
-
 	// Drive to center
 	commandQueue.push(
 		new DriveDistance(driveBase, odom, robotConfig, 53.75, angle, 3000));
 
 	// Score in center
-	commandQueue.push(new InstantCommand([&]() {
-		cycler.setColorSort((color == AllianceColor::RED_ALLIANCE) ? ColorSort::RED: ColorSort::BLUE);
-	}));
 	if (side == StartingSide::LEFT) {
 		commandQueue.push(
 			new DriveDistance(driveBase, odom, robotConfig, -1.5, angle, 1000));
 		commandQueue.push(new RepeatForTimeCommand([&]() { scoreLong(); }, 3000));
 	} else {
-		commandQueue.push(new RepeatForTimeCommand([&]() { ejectLower(); }, 3000));
+		commandQueue.push(new RepeatForTimeCommand([&]() { scoreLower(); }, 3000));
 	}
-	commandQueue.push(new InstantCommand([&]() {cycler.setColorSort(ColorSort::INACTIVE);}));
 
 	// Drive towards loader
 	if (side == StartingSide::LEFT) {
@@ -683,7 +703,7 @@ void awp(AllianceColor color, StartingSide side) {
 			new DriveDistance(driveBase, odom, robotConfig, -49, angle, 3000));
 	} else {
 	commandQueue.push(
-		new DriveDistance(driveBase, odom, robotConfig, -52, angle, 3000));
+		new DriveDistance(driveBase, odom, robotConfig, -54, angle, 3000));
 	}
 	angle = 90;
 	commandQueue.push(new InstantCommand([&]() { scraper.extendPiston(); }));
@@ -691,17 +711,22 @@ void awp(AllianceColor color, StartingSide side) {
 		new TurnToHeading(driveBase, odom, robotConfig, angle, 1000));
 	commandQueue.push(new InstantCommand([&]() { stopAll(); }));
 
-	// Intake from loader
-
-	commandQueue.push(new InstantCommand([&]() { intakeLoader(); }));
+	// Intake Loader
+	commandQueue.push(new InstantCommand([&]() {
+		cycler.setColorSort((color == AllianceColor::RED_ALLIANCE) ? ColorSort::BLUE: ColorSort::RED);
+	}));
+	commandQueue.push(new RepeatForTimeCommand([&]() { intakeLoader(); }, 100));
 	commandQueue.push(new DriveDistance(
 		driveBase, odom, robotConfig,
-		-(24 - scraper_extension_in - 0.5 * robot_width + 5), angle, 2000));
+		-(24 - scraper_extension_in - 0.5 * robot_width), angle, 1000));
+	commandQueue.push(new RepeatForTimeCommand([&]() { intakeLoader(); }, 1500));
+
 	commandQueue.push(new DriveDistance(
-		driveBase, odom, robotConfig, 3, angle, 1000));
+		driveBase, odom, robotConfig, 3, angle, 500));
 	commandQueue.push(new DriveDistance(
-		driveBase, odom, robotConfig, -5, angle, 1000));
-	commandQueue.push(new TimeoutCommand(load_time));
+		driveBase, odom, robotConfig, -5, angle, 500));
+	commandQueue.push(new RepeatForTimeCommand([&]() { intakeLoader(); }, 1000));
+	commandQueue.push(new InstantCommand([&]() {cycler.setColorSort(ColorSort::INACTIVE);}));
 
 	// Drive and score on long goal
 	commandQueue.push(new InstantCommand([&]() { hood.extendPiston(); }));
